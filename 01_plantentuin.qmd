@@ -1,0 +1,72 @@
+---
+title: "QGIS01 Prepare OSM Data"
+bibliography: references_csl.json
+format:
+  html:
+    toc: true
+    html-math-method: katex
+    code-fold: true
+    embed-resources: true
+knitr:
+  opts_chunk:
+    echo: true
+---
+
+
+<https://www.youtube.com/watch?v=HqT34ew_Scc&list=PLCxnvDblgXGQHKgnbRTFB6a6AeKqYy9-9&index=30>
+
+
+
+# Download From OSM
+
+<https://www.openstreetmap.org/export#map=16/50.92856/4.33147>
+
+![Export a custom area from OSM.](01_1_osm_export.jpg)
+
+
+Data is exported as an "`.osm`" file.
+It contains many geospatial objects which can be further processed.
+
+
+# Cleanup in QGIS
+
+## Import
+
+- open qgis
+- `Layer` >> `Add Layer` >> `Add Vector Layer` and import the osm file
+- check attribute tables
+  - Lines seem to be useful (trails/paths);
+  - Points seem to be mixed box: some are habitat types, some are photo labels?
+  - main info is in `Multipolygons`.
+  
+Select CRS:
+
+![A CRS selection menu is hidden at the lower right information bar.](01_2_qgis_crs.jpg)
+
+
+It might make sense to export and re-import the multipolygon layer to an open format with the right CRS and extent, to get good defaults for the following.
+
+
+## Select by Expression
+
+![You can select subsets of a data set by SQL expressions.](01_3_qgis_select_expression.jpg)
+
+For example, select 
+
+- `"name" IS NOT NULL`
+- `"building" IS NOT NULL`
+- `"natural" = 'water'`
+- `"natural" IN ('water', 'wetland')`
+- `"natural" = 'wood'`
+- `AND`, `OR`, ... (SQL expressions)
+
+
+Save selection:
+
+- `Layer` >> `Save As` 
+- toggle `Save only selected features`
+- mind the **CRS** and **extent**
+
+![When exporting a subset of features, make sure to select the correct CRS and extent.](01_4_save_layer_selection.jpg)
+
+
