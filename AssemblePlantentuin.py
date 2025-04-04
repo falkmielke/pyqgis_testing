@@ -5,6 +5,7 @@ import sys
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import *
+from qgis.PyQt.QtCore import QMetaType
 import pathlib as pl
 # from PyQt4.QtCore import *
 # from PyQt4.QtGui import QApplication
@@ -69,6 +70,16 @@ settings = QgsMapSettings()
 extent: QgsRectangle = layers["garden"].extent()
 settings.setExtent(extent)
 
+
+## data layers
+layer = QgsVectorLayer("Point", "testing", "memory")
+# layer.addAttribute(QgsField("mytext", QMetaType.Type.QString))
+data_provider = layer.dataProvider()  # you access the real datasource behind your layer (for instance PostGIS)
+data_provider.addAttributes([QgsField("mytext", QMetaType.Type.QString)])
+layer.updateFields()  # update your vector layer from the datasource
+# layer.commitChanges()  # update your vector layer from the datasource
+
+QgsProject.instance().addMapLayer(layer)
 
 ## the viewport does not zoom to the ROI :(
 # canvas = iface.mapCanvas()
