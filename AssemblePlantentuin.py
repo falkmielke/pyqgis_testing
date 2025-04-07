@@ -12,196 +12,182 @@ import pathlib as pl
 # from PyQt4.QtXml import *
 
 
-# https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/intro.html#using-pyqgis-in-standalone-scripts
+
+class QgisProject(object):
+
+    def __init__(self, filename):
+        self.filename = filename # "test.qgs"
+        self.InitQgisApplication()
+        self.CreateQgisProject()
+        self.Save()
+
+    def InitQgisApplication(self):
+        # https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/intro.html#using-pyqgis-in-standalone-scripts
+
+        # Supply path to qgis install location
+        # QgsApplication.prefixPath()
+        QgsApplication.setPrefixPath("/usr/bin/qgis", True)
 
 
-# Supply path to qgis install location
-# QgsApplication.prefixPath()
-QgsApplication.setPrefixPath("/usr/bin/qgis", True)
+        # Create a reference to the QgsApplication.  Setting the
+        # second argument to False disables the GUI.
+        self.app = QgsApplication([], False)
 
 
-# Create a reference to the QgsApplication.  Setting the
-# second argument to False disables the GUI.
-qgs = QgsApplication([], False)
+        # Load providers
+        self.app.initQgis()
 
 
-# Load providers
-qgs.initQgis()
+    def CreateQgisProject(self):
+        ### Project
+        self.project = QgsProject.instance()
+        self.path: pl._local.PosixPath = pl.Path(self.project.readPath("./"))
+        # print(project.fileName())
+
+        project_crs = QgsCoordinateReferenceSystem.fromEpsgId(31370)
+        self.project.setCrs(project_crs)
 
 
-# Write your code here to load some layers, use processing
-
-# algorithms, etc.
-
-### Project
-project = QgsProject.instance()
-print(project.fileName())
-
-project_crs = QgsCoordinateReferenceSystem.fromEpsgId(31370)
-project.setCrs(project_crs)
+    def Save(self):
+        # Read input parameters from GP dialog
+        self.save_filename = self.path/self.filename
+        check = self.project.write(str(self.save_filename))
 
 
-# Read input parameters from GP dialog
-qgis_project_path: pl._local.PosixPath = pl.Path(QgsProject.instance().readPath("./"))
-save_filename = qgis_project_path/"test.qgs"
-check = project.write(str(save_filename))
+def AddDataLayers(project):
+    layers = {}
+    # gj = "woods"
+    for gj in ["multi", "annotations",
+        "buildings", "garden", "streets", "trails",
+        "water", "wetland", "woods"]:
 
-layers = {}
-# gj = "woods"
-for gj in ["multi", "annotations",
-    "buildings", "garden", "streets", "trails",
-    "water", "wetland", "woods"]:
+        layer_path: pl._local.PosixPath = project.path / f"geodata/plantentuin_{gj}.geojson"
 
-    layer_path: pl._local.PosixPath = qgis_project_path / f"geodata/plantentuin_{gj}.geojson"
+        layer: QgsVectorLayer = QgsVectorLayer(path = str(layer_path), baseName = gj)
+        assert layer.isValid(), "Layer is not valid!" # should be a better check/raise in production
 
-    layer: QgsVectorLayer = QgsVectorLayer(path = str(layer_path), baseName = gj)
-    assert layer.isValid(), "Layer is not valid!" # should be a better check/raise in production
+        project.project.addMapLayer(layer)
 
-    QgsProject.instance().addMapLayer(layer)
+        layers[gj] = layer
 
-    layers[gj] = layer
+    return layers
 
 
+def ExtentByLayer(lyr):
+    # set extent and refresh
+    # https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/composer.html#simple-rendering
+    settings = QgsMapSettings()
+    extent: QgsRectangle = lyr.extent()
+    settings.setExtent(extent)
+
+    # canvas = QgsMapCanvas()
+    # canvas.show()
+
+    # canvas.setExtent(extent)
+    # canvas.refresh()
 
 
-# set extent and refresh
-# https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/composer.html#simple-rendering
-settings = QgsMapSettings()
-extent: QgsRectangle = layers["garden"].extent()
-settings.setExtent(extent)
+class QgisFormLayer(object):
 
-### START form manipulation
-## data layers
-layer = QgsVectorLayer("Point", "testing", "memory")
-
-# access the real datasource behind your layer (for instance PostGIS)
-data_provider = layer.dataProvider()
+    def __init__(self, project):
+        ## data layers
+        self.project = project
+        self.layer = QgsVectorLayer("Point", "testing", "memory")
+        self.CreateFields()
+        self.CreateForm()
 
 
-## (I) Add all fields
-data_provider.addAttributes([ \
-    # QgsField("mycategory", QMetaType.Type.Int), \
-    QgsField("mycategory", QMetaType.Type.QString), \
-    QgsField("mytext", QMetaType.Type.QString), \
-    ])
-layer.updateFields()  # update your vector layer from the datasource
-# layer.commitChanges()  # update your vector layer from the datasource
+    def CreateFields(self):
+        # access the real datasource behind your layer (for instance PostGIS)
+        self.data_provider = self.layer.dataProvider()
 
-# find fields back by index
-fields = layer.fields()
-fldidx = lambda field_name: fields.indexFromName(field_name)
+        ## (I) Add all fields
+        self.data_provider.addAttributes([ \
+            # QgsField("mycategory", QMetaType.Type.Int), \
+            QgsField("mycategory", QMetaType.Type.QString), \
+            QgsField("mytext", QMetaType.Type.QString), \
+            ])
+        self.layer.updateFields()  # update your vector layer from the datasource
+        # layer.commitChanges()  # update your vector layer from the datasource
 
-## (II) form configuration
-my_form_config = layer.editFormConfig()
-my_form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
-root_container = my_form_config.invisibleRootContainer()
-
-# remove all existing items
-root_container.clear()
+        # find fields back by index
+        fields = self.layer.fields()
+        self.fldidx = lambda field_name: fields.indexFromName(field_name)
 
 
-## https://qgis.org/pyqgis/3.40/core/QgsAttributeEditorElement.html
-## https://gis.stackexchange.com/q/444315
-field_name = "mycategory"
-# widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
-category_map = {'Red': 'R', 'Green': 'G', 'Blue': 'B'}
-widget_setup = QgsEditorWidgetSetup('ValueMap', {'map': category_map})
+    def CreateForm(self):
 
-layer.setEditorWidgetSetup(fldidx(field_name), widget_setup)
-my_form_config.setLabelOnTop(fldidx(field_name), True)
+        ## (II) form configuration
+        self.form_config = self.layer.editFormConfig()
+        self.form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
+        self.root_container = self.form_config.invisibleRootContainer()
 
-field1 = QgsAttributeEditorField(name = field_name, idx = fldidx(field_name), parent = root_container)
-
-root_container.addChildElement(field1)
+        # remove all existing items
+        self.root_container.clear()
 
 
+        ## https://qgis.org/pyqgis/3.40/core/QgsAttributeEditorElement.html
+        ## https://gis.stackexchange.com/q/444315
+        field_name = "mycategory"
+        # widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
+        category_map = {'Red': 'R', 'Green': 'G', 'Blue': 'B'}
+        widget_setup = QgsEditorWidgetSetup('ValueMap', {'map': category_map})
 
-container1 = QgsAttributeEditorContainer(name = "details", parent = root_container)
+        self.layer.setEditorWidgetSetup(self.fldidx(field_name), widget_setup)
+        self.form_config.setLabelOnTop(self.fldidx(field_name), True)
 
-# visibility
-visexp = QgsExpression("\"mycategory\" = 'R'")
-container1.setVisibilityExpression(QgsOptionalExpression(visexp))
+        field1 = QgsAttributeEditorField(name = field_name, idx = self.fldidx(field_name), parent = self.root_container)
 
-
-field_name = "mytext"
-# widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
-widget_setup = QgsEditorWidgetSetup('TextEdit', {'IsMultiline': True, 'UseHtml': False})
-
-layer.setEditorWidgetSetup(fldidx(field_name), widget_setup)
-my_form_config.setLabelOnTop(fldidx(field_name), True)
-
-field2 = QgsAttributeEditorField(name = field_name, idx = fldidx(field_name), parent = container1)
-
-container1.addChildElement(field2)
+        self.root_container.addChildElement(field1)
 
 
-root_container.addChildElement(container1)
+        ## a container with more fields
+        container1 = QgsAttributeEditorContainer(name = "details", parent = self.root_container)
+
+        # visibility
+        visexp = QgsExpression("\"mycategory\" = 'R'")
+        container1.setVisibilityExpression(QgsOptionalExpression(visexp))
 
 
+        field_name = "mytext"
+        # widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
+        widget_setup = QgsEditorWidgetSetup('TextEdit', {'IsMultiline': True, 'UseHtml': False})
 
-layer.setEditFormConfig(my_form_config)
-layer.updateFields()
+        self.layer.setEditorWidgetSetup(self.fldidx(field_name), widget_setup)
+        self.form_config.setLabelOnTop(self.fldidx(field_name), True)
 
+        field2 = QgsAttributeEditorField(name = field_name, idx = self.fldidx(field_name), parent = container1)
 
-QgsProject.instance().addMapLayer(layer)
-
-
-# container = QgsAttributeEditorContainer(name: QString, parent: QgsAttributeEditorElement, QColor...)
-# layer.setEditorLayout(1)
-
-## relevant json tags are:
-# attributeEditorContainer
-# attributeEditorField
+        container1.addChildElement(field2)
 
 
-## the viewport does not zoom to the ROI :(
-# canvas = iface.mapCanvas()
-# canvas.setExtent(extent)
-# QgsMapCanvas.zoomToSelected(layers["garden"])
-
-# ## print layouts
-# # https://gis.stackexchange.com/a/428066
-# # https://gis.stackexchange.com/a/287125
-# plm = project.layoutManager()
-# # print(dir(plm))
-# print(help(plm.addLayout))
-# layout = plm.addLayout()#"default") # your layout name
-#
-# #get reference map
-# refmap = layout.referenceMap()
-# refmap.setExtent(extent)
+        self.root_container.addChildElement(container1)
 
 
-
-check = project.write()
+        ## write form
+        self.layer.setEditFormConfig(self.form_config)
+        self.layer.updateFields()
+        self.project.project.addMapLayer(self.layer)
 
 # Finally, exitQgis() is called to remove the
 
 # provider and layer registries from memory
 # TODO atexit?
-qgs.exitQgis()
 
 
+if __name__ == "__main__":
+    project = QgisProject("test.qgs")
+    data_layers = AddDataLayers(project)
+    ExtentByLayer(data_layers["garden"])
+
+    form = QgisFormLayer(project)
+
+    check = project.Save()
+    project.app.exitQgis()
 
 
-# def add_Layers():
-#     QGISAPP = QgsApplication(sys.argv, True)
-#     QgsApplication.setPrefixPath(r"C:\OSGeo4W\apps\qgis", True)
-#     QgsApplication.initQgis()
-#     QgsProject.instance().setFileName(strProjetName)
-#     print QgsProject.instance().fileName()
-#
-#
-# for file1 in os.listdir(r"C:\myprojects\world"):
-#      if file1.endswith('.shp'):
-#          layer = QgsVectorLayer(r"C:\myprojects\world"+r"\\"+file1, file1, "ogr")
-#          print file1
-#          print layer.isValid()
-#          # Add layer to the registry
-#          QgsMapLayerRegistry.instance().addMapLayer(layer)
-#
-#
-# QgsProject.instance().write()
-# QgsApplication.exitQgis()
-#
-# add_Layers()
+# TODO
+# - application path not initialized
+# - zoom to layer
+# - shows CRS question on opening
+# - does geometry (coords) come to form layer automatically?
