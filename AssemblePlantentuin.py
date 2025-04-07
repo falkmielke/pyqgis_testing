@@ -70,12 +70,15 @@ settings = QgsMapSettings()
 extent: QgsRectangle = layers["garden"].extent()
 settings.setExtent(extent)
 
-# START
+### START form manipulation
 ## data layers
 layer = QgsVectorLayer("Point", "testing", "memory")
-# layer.addAttribute(QgsField("mytext", QMetaType.Type.QString))
-data_provider = layer.dataProvider()  # access the real datasource behind your layer (for instance PostGIS)
 
+# access the real datasource behind your layer (for instance PostGIS)
+data_provider = layer.dataProvider()
+
+
+## (I) Add all fields
 data_provider.addAttributes([ \
     # QgsField("mycategory", QMetaType.Type.Int), \
     QgsField("mycategory", QMetaType.Type.QString), \
@@ -84,13 +87,16 @@ data_provider.addAttributes([ \
 layer.updateFields()  # update your vector layer from the datasource
 # layer.commitChanges()  # update your vector layer from the datasource
 
+# find fields back by index
 fields = layer.fields()
 fldidx = lambda field_name: fields.indexFromName(field_name)
 
+## (II) form configuration
 my_form_config = layer.editFormConfig()
-# my_form_config.setLayout(Qgis.AttributeFormLayout) # drag&drop
+my_form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
 root_container = my_form_config.invisibleRootContainer()
 
+# remove all existing items
 root_container.clear()
 
 
@@ -98,7 +104,8 @@ root_container.clear()
 ## https://gis.stackexchange.com/q/444315
 field_name = "mycategory"
 # widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
-widget_setup = QgsEditorWidgetSetup('ValueMap', {'Map': {'R': 'Red', 'G': 'Green', 'B': 'Blue'}})
+category_map = {'Red': 'R', 'Green': 'G', 'Blue': 'B'}
+widget_setup = QgsEditorWidgetSetup('ValueMap', {'map': category_map})
 
 layer.setEditorWidgetSetup(fldidx(field_name), widget_setup)
 my_form_config.setLabelOnTop(fldidx(field_name), True)
@@ -128,8 +135,9 @@ field2 = QgsAttributeEditorField(name = field_name, idx = fldidx(field_name), pa
 container1.addChildElement(field2)
 
 
-
 root_container.addChildElement(container1)
+
+
 
 layer.setEditFormConfig(my_form_config)
 layer.updateFields()
