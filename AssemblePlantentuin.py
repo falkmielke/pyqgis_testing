@@ -5,7 +5,7 @@ import sys
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import *
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QMetaType, QVariant
 import pathlib as pl
 # from PyQt4.QtCore import *
 # from PyQt4.QtGui import QApplication
@@ -70,16 +70,81 @@ settings = QgsMapSettings()
 extent: QgsRectangle = layers["garden"].extent()
 settings.setExtent(extent)
 
-
+# START
 ## data layers
 layer = QgsVectorLayer("Point", "testing", "memory")
 # layer.addAttribute(QgsField("mytext", QMetaType.Type.QString))
-data_provider = layer.dataProvider()  # you access the real datasource behind your layer (for instance PostGIS)
-data_provider.addAttributes([QgsField("mytext", QMetaType.Type.QString)])
+data_provider = layer.dataProvider()  # access the real datasource behind your layer (for instance PostGIS)
+
+data_provider.addAttributes([ \
+    # QgsField("mycategory", QMetaType.Type.Int), \
+    QgsField("mycategory", QMetaType.Type.QString), \
+    QgsField("mytext", QMetaType.Type.QString), \
+    ])
 layer.updateFields()  # update your vector layer from the datasource
 # layer.commitChanges()  # update your vector layer from the datasource
 
+fields = layer.fields()
+fldidx = lambda field_name: fields.indexFromName(field_name)
+
+my_form_config = layer.editFormConfig()
+# my_form_config.setLayout(Qgis.AttributeFormLayout) # drag&drop
+root_container = my_form_config.invisibleRootContainer()
+
+root_container.clear()
+
+
+## https://qgis.org/pyqgis/3.40/core/QgsAttributeEditorElement.html
+## https://gis.stackexchange.com/q/444315
+field_name = "mycategory"
+# widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
+widget_setup = QgsEditorWidgetSetup('ValueMap', {'Map': {'R': 'Red', 'G': 'Green', 'B': 'Blue'}})
+
+layer.setEditorWidgetSetup(fldidx(field_name), widget_setup)
+my_form_config.setLabelOnTop(fldidx(field_name), True)
+
+field1 = QgsAttributeEditorField(name = field_name, idx = fldidx(field_name), parent = root_container)
+
+root_container.addChildElement(field1)
+
+
+
+container1 = QgsAttributeEditorContainer(name = "details", parent = root_container)
+
+# visibility
+visexp = QgsExpression("\"mycategory\" = 'R'")
+container1.setVisibilityExpression(QgsOptionalExpression(visexp))
+
+
+field_name = "mytext"
+# widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
+widget_setup = QgsEditorWidgetSetup('TextEdit', {'IsMultiline': True, 'UseHtml': False})
+
+layer.setEditorWidgetSetup(fldidx(field_name), widget_setup)
+my_form_config.setLabelOnTop(fldidx(field_name), True)
+
+field2 = QgsAttributeEditorField(name = field_name, idx = fldidx(field_name), parent = container1)
+
+container1.addChildElement(field2)
+
+
+
+root_container.addChildElement(container1)
+
+layer.setEditFormConfig(my_form_config)
+layer.updateFields()
+
+
 QgsProject.instance().addMapLayer(layer)
+
+
+# container = QgsAttributeEditorContainer(name: QString, parent: QgsAttributeEditorElement, QColor...)
+# layer.setEditorLayout(1)
+
+## relevant json tags are:
+# attributeEditorContainer
+# attributeEditorField
+
 
 ## the viewport does not zoom to the ROI :(
 # canvas = iface.mapCanvas()
