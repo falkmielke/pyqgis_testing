@@ -13,6 +13,70 @@ import pathlib as pl
 
 
 
+# https://gis.stackexchange.com/a/346374
+# layer = QgsProject.instance().mapLayersByName('monuments')[0]
+# ews = layer.editorWidgetSetup(layer.fields().indexFromName("mytext"))
+# print("Type:", ews.type())
+# print("Config:", ews.config())
+
+widget_library = {}
+
+widget_library["multiline"] = QgsEditorWidgetSetup(
+    'TextEdit', {
+        'IsMultiline': True,
+        'UseHtml': False
+    })
+
+widget_library["attachment"] = QgsEditorWidgetSetup(
+    'ExternalResource', {
+        'FileWidget': True,
+        'DocumentViewer': 0,
+        'RelativeStorage': 0,
+        'StorageMode': 0,
+        'DocumentViewerHeight': 0,
+        'FileWidgetButton': True,
+        'DocumentViewerWidth': 0,
+        'FileWidgetFilter': ''
+    })
+
+widget_library["checkbox"] = QgsEditorWidgetSetup(
+    'CheckBox', {
+        'AllowNullState': True,
+        # 'CheckedState': '',
+        'TextDisplayMethod': 0,
+        # 'UncheckedState': ''
+    })
+
+widget_library["date"] = QgsEditorWidgetSetup(
+    'DateTime', {
+        'allow_null': True,
+        'calendar_popup': True,
+        'display_format': 'd/M/yy',
+        'field_format': 'yyyyMMdd',
+        'field_format_overwrite': False,
+        'field_iso_format': False
+    })
+
+widget_library["image"] = QgsEditorWidgetSetup(
+    'ExternalResource', {
+        'DocumentViewer': 0,
+        'DocumentViewerHeight': 0,
+        'DocumentViewerWidth': 0,
+        'FileWidget': True,
+        'FileWidgetButton': True,
+        'FileWidgetFilter': '',
+        'PropertyCollection': {
+            'name': None,
+            'properties': {},
+            'type': 'collection'
+        },
+        'RelativeStorage': 1,
+        'StorageAuthConfigId': False,
+        'StorageMode': 0,
+        'StorageType': None
+ })
+
+
 class QgisProject(object):
 
     def __init__(self, filename):
@@ -89,30 +153,58 @@ def ExtentByLayer(lyr):
 
 class QgisFormLayer(object):
 
-    def __init__(self, project):
+    def __init__(self, project, \
+                 name: str = "", \
+                 provider: str = None, \
+                 fields: list = [], \
+                 verbose = False
+                 ):
         ## data layers
         self.project = project
-        self.layer = QgsVectorLayer("Point", "testing", "memory")
+        self.name = name
+        self.provider = provider
+        if self.provider is None:
+            self.provider = "memory"
+        self.layer = QgsVectorLayer("Point", self.name, self.provider)
+        self.fields = fields
+        self.verbose = verbose
+
+        # make sure elements are linked
+        LinkElements(self.fields)
+
         self.CreateFields()
+
         self.CreateForm()
 
 
     def CreateFields(self):
+
         # access the real datasource behind your layer (for instance PostGIS)
         self.data_provider = self.layer.dataProvider()
+        if (self.fields is None) or (len(self.fields) < 1):
+            print("QgisFormLayer `fields` must be a list of form elements" +
+                          " to create `QgsField`s.")
 
         ## (I) Add all fields
         self.data_provider.addAttributes([ \
-            # QgsField("mycategory", QMetaType.Type.Int), \
-            QgsField("mycategory", QMetaType.Type.QString), \
-            QgsField("mytext", QMetaType.Type.QString), \
+                QgsField(element["label"], element["dtype"]) \
+                for element in self.fields \
+                if not element.is_container \
             ])
         self.layer.updateFields()  # update your vector layer from the datasource
         # layer.commitChanges()  # update your vector layer from the datasource
 
         # find fields back by index
-        fields = self.layer.fields()
-        self.fldidx = lambda field_name: fields.indexFromName(field_name)
+        field_lookup = self.layer.fields()
+        self.fldidx = lambda field_name: field_lookup.indexFromName(field_name)
+
+        if self.verbose:
+            print(["(" + str(self.fldidx(element["label"])) + ") " \
+                       + element["label"] \
+                    for element in self.fields \
+                    if not element.is_container])
+
+
 
 
     def CreateForm(self):
@@ -126,42 +218,67 @@ class QgisFormLayer(object):
         self.root_container.clear()
 
 
+
+        ## create containers
+        self.containers = {}
+        for container in [element for element in self.fields if element.is_container]:
+
+            ## a container which contain more fields
+            label = container["label"]
+            parent = container.parent_link
+            if parent is None:
+                parent = self.root_container
+
+            self.containers[label] = QgsAttributeEditorContainer(name = label, parent = parent)
+            container.link_q = self.containers[label]
+
+            if self.verbose:
+                print(f'created container "{label}": ', str(container.link_q))
+
+            # visibility
+            condition = container["condition"]
+            if condition is not None:
+                visexp = QgsExpression(condition)
+                self.containers[label].setVisibilityExpression(QgsOptionalExpression(visexp))
+
+
         ## https://qgis.org/pyqgis/3.40/core/QgsAttributeEditorElement.html
         ## https://gis.stackexchange.com/q/444315
-        field_name = "mycategory"
-        # widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
-        category_map = {'Red': 'R', 'Green': 'G', 'Blue': 'B'}
-        widget_setup = QgsEditorWidgetSetup('ValueMap', {'map': category_map})
-
-        self.layer.setEditorWidgetSetup(self.fldidx(field_name), widget_setup)
-        self.form_config.setLabelOnTop(self.fldidx(field_name), True)
-
-        field1 = QgsAttributeEditorField(name = field_name, idx = self.fldidx(field_name), parent = self.root_container)
-
-        self.root_container.addChildElement(field1)
 
 
-        ## a container with more fields
-        container1 = QgsAttributeEditorContainer(name = "details", parent = self.root_container)
+        ## fill with elements
+        for field in [element for element in self.fields if not element.is_container]:
+            label = field["label"]
+            parent = field.parent_link
+            if parent is None:
+                parent_q = self.root_container
+            else:
+                parent_q = parent.link_q
 
-        # visibility
-        visexp = QgsExpression("\"mycategory\" = 'R'")
-        container1.setVisibilityExpression(QgsOptionalExpression(visexp))
+            self.layer.setEditorWidgetSetup(self.fldidx(label), field["widget"])
+            self.form_config.setLabelOnTop(self.fldidx(label), True)
 
+            new_field = QgsAttributeEditorField( \
+                name = label, \
+                idx = self.fldidx(label), \
+                parent = parent_q \
+            )
+            field.link_q = new_field
 
-        field_name = "mytext"
-        # widget_setup = QgsEditorWidgetSetup('UniqueValues', {'Editable': True})
-        widget_setup = QgsEditorWidgetSetup('TextEdit', {'IsMultiline': True, 'UseHtml': False})
+            if self.verbose:
+                print(f'created field "{label}": ', str(field.link_q))
 
-        self.layer.setEditorWidgetSetup(self.fldidx(field_name), widget_setup)
-        self.form_config.setLabelOnTop(self.fldidx(field_name), True)
+        ## link the children in order of appearance
+        for element in self.fields:
+            if element.parent_link is None:
+                self.root_container.addChildElement(element.link_q)
 
-        field2 = QgsAttributeEditorField(name = field_name, idx = self.fldidx(field_name), parent = container1)
-
-        container1.addChildElement(field2)
-
-
-        self.root_container.addChildElement(container1)
+                if self.verbose:
+                    print(f"adding {element['label']} to root.")
+            else:
+                element.parent_link.link_q.addChildElement(element.link_q)
+                if self.verbose:
+                    print(f"adding {element['label']} to {element.parent_link['label']}.")
 
 
         ## write form
@@ -175,19 +292,108 @@ class QgisFormLayer(object):
 # TODO atexit?
 
 
+class FormElement(dict):
+    def __init__(self, label, dtype = None, parent = None,
+            condition = None, widget = None
+        ):
+        self["label"] = label
+        if dtype is not None:
+            self["dtype"] = dtype
+        self["parent"] = parent
+
+        # flag containers
+        self.is_container = None
+
+        # to be filled in a later step
+        self.parent_link = None # link to parent
+        self.children = [] # link to children
+        self.link_q = None # link to the qgis form object
+
+
+    def Link(self, structure):
+        labels = [element["label"] for element in structure]
+
+        # find the parent by label
+        if self["parent"] in labels:
+            self.parent_link = structure[labels.index(self["parent"])]
+
+        if self.parent_link is not None:
+            # append self to the children of the parent
+            self.parent_link.children.append(self)
+
+
+
+
+class FormWidget(FormElement):
+    def __init__(self, label, dtype, widget, parent = None):
+        super(FormWidget, self).__init__(label = label, dtype = dtype, parent = parent)
+        self["widget"] = widget
+        self.is_container = False
+
+class FormContainer(FormElement):
+    def __init__(self, label, condition = None, parent = None):
+        super(FormContainer, self).__init__(label = label, parent = parent)
+        self["condition"] = condition
+        self.is_container = True
+
+def LinkElements(form):
+    # clear links
+    for element in form:
+        element.children = []
+        element.parent_link = None
+    # re-link
+    for element in form:
+        element.Link(form)
+
+
 if __name__ == "__main__":
     project = QgisProject("test.qgs")
     data_layers = AddDataLayers(project)
     ExtentByLayer(data_layers["garden"])
 
-    form = QgisFormLayer(project)
+    form_structure = [
+        FormWidget("mycategory", dtype = QMetaType.Type.QString, \
+                    widget = QgsEditorWidgetSetup('ValueMap', {'map': {'Red': 'R', 'Green': 'G', 'Blue': 'B'}}) \
+                    ), \
+        FormContainer("Red habitat", condition = "\"mycategory\" = 'R'"), \
+        FormWidget("text", dtype = QMetaType.Type.QString, \
+                    widget = widget_library["multiline"], \
+                    parent = "Red habitat"), \
+        FormContainer("Green habitat", condition = "\"mycategory\" = 'G'"), \
+        FormWidget("time", dtype = QMetaType.Type.Int, \
+                    widget = widget_library["date"], \
+                    parent = "Green habitat"), \
+        FormContainer("Blue habitat", condition = "\"mycategory\" = 'B'"), \
+        FormWidget("photo", dtype = QMetaType.Type.QString, \
+                    widget = widget_library["image"], \
+                    parent = "Blue habitat"), \
+        FormWidget("done", dtype = QMetaType.Type.Bool, \
+                    widget = widget_library["checkbox"], \
+                    ) \
+    ]
+
+    # LinkElements(form_structure)
+    # print([f"{(frm.parent_link['label']+'/') if frm.parent_link is not None else ""}{frm['label']}"
+    #        for frm in form_structure])
+
+
+    test_form = QgisFormLayer( \
+        project, \
+        name = "monuments", \
+        fields = form_structure, \
+        verbose = True \
+        )
+
 
     check = project.Save()
     project.app.exitQgis()
 
 
 # TODO
-# - application path not initialized
 # - zoom to layer
-# - shows CRS question on opening
+# - shows CRS trafo question on opening?
 # - does geometry (coords) come to form layer automatically?
+# - more form widget types
+# - test on qfield app
+# - DateTime of creation
+# - layer colors and symbols
