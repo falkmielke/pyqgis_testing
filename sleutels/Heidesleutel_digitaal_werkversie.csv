@@ -1,0 +1,294 @@
+Key,Heidesleutel,,,,,,
+Titel,Veldsleutel voor Heide,,,,,,
+Versie,versie2_20230731,,,,,,
+Auteurs,xxyy,,,,,,
+STEP,TYPE,NAME,NEXT_STEP,CLASSIFICATION,BWK_CODE,SUBKEY,REMARK
+0,Q,Bedekking bomen en struiken (kroonprojectie; exclusief dwergstruiken):,,,,,"dwergstruiken = Calluna, Erica, Vaccinium, Genista"
+0,A,≤ 10%,2,,,,Het verspreid voorkomen van individuele of kleine groepjes (< 400 m²) bomen of struiken vormt integraal onderdeel van de heidebiotoop.
+0,A,> 10% and < 50%,4,,,,
+0,A,≥ 50%,1,,,,
+,,,,,,,
+1,Q,,,,,,
+1,A,Bedekking (kroonprojectie) van wilde gagel ≥ 50%,80,,,,
+1,A,"Recent verboste heide: minder dan 10% bedekking van hogere (> 6m) bomen en struiken en soorten van open heide (struikhei, gewone dophei, rode dophei, blauwe bosbes, beenbreek, veenpluis, buntgras) domineren op pijpenstrootje, bochtige smele, struisgras spec, varens en bosplanten",40,,,,Een recent verboste heide wordt nog als een heidehabitat aanzien als de ondergroei gedomineerd wordt door de typisch soorten van open heide.
+1,A,anders,SLEUTEL,,,BOSSEN_STRUWELEN,
+,,,,,,,
+2,Q,,,,,,
+2,A,jeneverbes: afwezig of < 10 ex.,3,,,,Bij aanwezigheid: het aantal jeneverbessen vermelden in infoveld.
+2,A,jeneverbes: ≥ 10 ex. aanwezig,35,,,,
+,,,,,,,
+3,Q,,,,,,
+3,A,"Vergraste heide: pijpenstrootje, bochtige smele, fijn schapengras en/of struisgrassen bedekken > 50% of hun aandeel in de kruidlaag is > 50%",10,,,,Kroonprojectie dwergstruiken < 50%.
+3,A,Vegetatie gedomineerd door adelaarsvaren (bedekking > 50%) (= adelaarsvaren gedomineerde heide),65,,,,
+3,A,"Recente plagplekken, brandplekken of pioniervegetaties met witte of bruine snavelbies, moeraswolfsklauw, ronde of kleine zonnedauw (= pioniersvegetaties)",70,,,,
+3,A,anders (= open heide en duin),50,,,,
+,,,,,,,
+4,Q,,,,,,
+4,A,Open heide met veel verspreide bomen of in evolutie naar verboste heide,2,,..b + boomcode,,Noteer de dominante boom- en/of struiksoort en vervolg bij 1a zonder rekening te houden met de beboste delen bij het schatten van verhoudingen.
+,,,,,,,
+10,T1,Vergraste heide (< 50% bomen of struiken; grassen dominant en > 50% bedekkend),,,,,
+10,Q,,,,,,
+10,A,Struisgras spec en/of fijn schapengras domineert de graslaag,11,,,,
+10,A,Bochtige smele domineert de graslaag,14,,,,
+10,A,Pijpenstrootje domineert de graslaag,21,,,,
+,,,,,,,
+11,T1,Vergraste heide (dominantie van struisgras spec en/of fijn schapengras),,,,,
+11,Q,,,,,,
+11,A,"Vergraste landduinvegetatie: op profielloos landduin of droge profielloze zandgrond, EN met abundant soorten van het Buntgrasverbond: buntgras, ruig haarmos, vroege haver, zandzegge of korstmossen (o.a. Cladonia's en Cetraria's). Struikhei meestal minder dan 10% bedekkend.",,2330_bu,hac°,,"Indien ≥ 10% open zand, dan wordt dm als eenh2 (kwaliteitsindicator) toegevoegd."
+11,A,"Vergraste dwerghavervegetatie: open, grazige vegetatie op kalkarme, droge zandgrond met minstens abundant éénjarigen, waarbij minstens 2 van de typische soorten vroege haver, klein vogelpootje, zilverhaver, klein tasjeskruid, dwergviltkruid, eekhoorngras en zandblauwtje tesamen frequent aanwezig zijn, naast de overblijvende soorten zoals struisgras spec, gewoon biggenkruid en schapenzuring.",,2330_dw,hat°,,Indien soorten van 2330_bu en 2330_dw samen voorkomen: wordt niet als een complex van beide subtypen gekarteerd; de soorten met het hoogste aandeel in de vegetatie bepalen het subtype.
+11,A,Anders:,12A,,,,
+,,,,,,,
+12A,Q,,,,,,
+12A,A,Bedekking van dwergstruiken ≥ 20%,13,,,,
+12A,A,Anders:,12B,,,,
+,,,,,,,
+12B,Q,,,,,,
+12B,A,"Vergraste heide, deel uitmakend van een groter heidegebied",,"2310,4030",ha,,
+12B,A,Struisgrasland,SLEUTEL,,,GRASLANDEN,
+,,,,,,,
+13,Q,,,,,, 
+13,A,"Open vegetatie op profielloos landduin of droge profielloze zandgrond met aanwezigheid van typische soorten van landduinvegetaties (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",,2310,ha+cg,,
+13,A,Anders,,4030,ha+cg,,
+,,,,,,,
+,,,,,,,
+14,T1,Vergraste heide (dominantie van bochtige smele),,,,,
+,,,,,,,
+14,Q,,,,,,
+14,A,Vergraste droge heide met aandeel resterende dwergstruiken ≥ 20%,15,,,,"dwergstruiken = Calluna, Erica, Vaccinium, Genista"
+14,A,Anders,16,,,,
+,,,,,,,
+15,Q,,,,,,
+15,A,"Open vegetatie op profielloos landduin of droge profielloze zandgrond met aanwezigheid van typische soorten van landduinvegetaties (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",,2310,cd + cg,,
+15,A,Op andere bodems en blauwe en/of rode bosbes domineren de dwergstruiklaag,,4030,cd + cv,,
+15,A,Anders,,4030,cd + cg,,
+,,,,,,,
+16,Q,,,,,,
+16,A,Grasland of zoom met minstens 3 typische soorten van heischraal grasland elk occasioneel aanwezig:,SLEUTEL,,,GRASLAND_HT6230,
+16,I,"heischrale soorten: blauwe knoop, blauwe zegge, bleeksporig bosviooltje, borstelgras, dicht havikskruid, echte guldenroede, fijn schapengras, fraai hertshooi, gaspeldoorn, gelobde maanvaren, gevlekte orchis, heidekartelblad, hondsviooltje, kleine tijm, klokjesgentiaan, knollathyrus, kruipganzerik, liggend walstro, liggende vleugeltjesbloem, mannetjesereprijs, spits havikskruid, stekelbrem, stijf havikskruid, stijve ogentroost, tandjesgras, tormentil, trekrus, tweenervige zegge, veelbloemige veldbies, welriekende nachtorchis, zaagblad.",,,,,
+16,A,"Vergraste landduinvegetatie (landduin of droge profielloze zandgrond) en met minstens abundant soorten van het Buntgrasverbond: buntgras, ruig haarmos, vroege haver, zandzegge of korstmossen (o.a. Cladonia's en Cetraria's). Struikhei meestal minder dan 10% bedekkend.",,2330_bu,hac°,,"Indien ≥ 10% open zand, dan wordt dm als eenh2 (kwaliteitsindicator) toegevoegd."
+16,A,"Open, grazige vegetatie op kalkarme, droge zandgrond met minstens abundant éénjarigen, waarbij de typische soorten vroege haver, klein vogelpootje, zilverhaver, klein tasjeskruid, dwergviltkruid, eekhoorngras en zandblauwtje tesamen minstens frequent aanwezig zijn, naast de soms aanwezige algemenere, overblijvende soorten zoals struisgras spec, gewoon biggenkruid en schapenzuring.",,2330_dw,hat°,,"Indien soorten van 2330_bu en 2330_dw samen voorkomen, wordt dit niet als een complex van beide subtypen gekarteerd. De soorten met het hoogste aandeel in de vegetatie bepalen het subtype."
+16,A,Anders,17,,,,
+,,,,,,,
+17,Q,De door Bochtige smele gedomineerde vegetatie maakt deel uit van:,,,,,
+17,A,een groter heideterrein,18,,,,
+17,A,een open plek omgeven door bos,19,,,,
+17,A,een tijdelijke kapvlakte,SLEUTEL,,,BOSSEN_STRUWELEN,
+17,A,de ondergroei van een (recente) bos(aanplant),SLEUTEL,,,BOSSEN_STRUWELEN,
+17,A,anders,20,,,,
+,,,,,,,
+18,Q,,,,,,
+18,A,"Open vegetatie op profielloos landduin of droge profielloze zandgrond met aanwezigheid van typische soorten van landduinvegetaties (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",,2310,cd,,
+18,A,Anders,,4030,cd,,
+,,,,,,,
+19,Q,Open plek in het bos:,,,,,
+19,A,< 1000 m² en vegetatiesamenstelling sterk gelijkend aan deze van de bosondergroei,maakt deel uit van het bos en gaat op in de omliggend bosbiotoop,,,,
+19,A,Anders,20,,,,
+,,,,,,,
+20,Q,,,,,,
+20,A,Struikhei minstens frequent aanwezig,18,,,,
+20,A,Struikhei afwezig of hooguit occasioneel aanwezig,,geen habitat,cd,,
+,,,,,,,
+21,T1,Vergraste heide (dominantie van pijpenstrootje),,,,,
+21,Q,,,,,,
+21,A,Bedekking (kroonsluiting) van dwergstruiken ≥ 20%,22,,,,
+21,A,Anders,23,,,,
+22,Q,,,,,,
+22,A,"Op profielloos landduin of met frequent typische soorten van binnenlands (stuif)duin (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",,2310,cm + cg,,
+22,A,"Op drogere bodem, dwergstruiken gedomineerd door struikhei en typische natte heidesoorten (veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies) < frequent",,4030,cm + cg,,
+22,A,"Op natte bodem en dwergstruiken gedomineerd door gewone dophei, de typische natte heidesoorten (veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies) of andere vochtindicatoren (bijv. veenmossen, blauwe zegge, bruine snavelbies, pitrus ..)  ≥ frequent",,4010,cm + ce,,
+22,A,"Op natte bodem met abundant bultvormende veenmossen (S. papillosum, S. magellanicum, S. rubellum); kleine veenbes, lavendelhei of eenarig wollegras kunnen aanwezig zijn",,7140_oli,cm + ces,,andere veenmossoorten zoals S. fallax en S. auriculatum zijn dan meestal ook abundant aanwezig
+22,A,Rode bosbes frequent aanwezig,28,,,,
+22,A,Dwergstruiken gedomineerd door blauwe bosbes,28,,,,
+23,Q,,,,,,
+23,A,"Pijpenstrootje in de grasmat niet pollenvormend, weinig strooisel en aandeel heischrale soorten zoals tandjesgras, borstelgras, tormentil, liggende vleugeltjesbloem, heidekartelblad, trekrus, stekelbrem, gevlekte orchis, tweenervige zegge > aandeel typische soorten natte heide: gewone dophei, veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies",SLEUTEL,,,GRASLAND_HT6230,
+23,A,Anders,27,,,,
+24,Q,,,,,,
+24,A,"Op profielloos landduin of met frequent typische soorten van binnenlands (stuif)duin (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",25,,,,
+24,A,"Met ≥ 20% gewone dophei, beenbreek, veenpluis, veenbies, snavelbiezen en/of zonnedauw",,4010,cm+ce,,indien permanent natte slenken met snavelbies-vegetaties: aandeel 7150 toevoegen (zie 21)
+24,A,"Ven(oever): pijpenstro vormt (hoge) verspreid staande bulten met ruime open slenken; de gezamenlijke bedekking van deze slenken met open water, waterveenmos, veelstengelige waterbies, knolrus is ≥ 70%",SLEUTEL,,,WATEREN,
+24,A,"Verland ven: pijpenstro vormt (hoge) verspreid staande bulten met ertussen permanent natte slenken; de gezamenlijke bedekking van deze slenken met open water, waterveenmos, veelstengelige waterbies, knolrus is 50 à 70%",,,cm/ao…,,Raadpleeg de watersleutel (Scheers et al. 2016) om het waterbiotoop te typeren
+24,A,anders,26,,,,
+25,Q,,,,,,
+25,A,"Op profielloos landduinen, met aandeel pioniersvegetaties van korstmossen, ruig haarmos, grijs kronkelsteeltje, buntgras, zandstruisgras, zandzegge, heidespurrie, klein tasjeskruid, vroege haver > aandeel struikhei.",,2330_bu,cm,,"Indien ≥ 10% open zand, dan wordt dm als eenh2 (kwaliteitsindicator) toegevoegd."
+25,A,Anders,,2310,cm,,
+,,,,,,,
+26,Q,,,,,,
+26,A,"Op vochtige tot natte bodem; pijpenstro vormt een ogenschijnlijk alles bedekkend geheel van hoge bulten met natte slenken waarin veenmossen, gewone dophei of typische soorten van natte heide (veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies) aanwezig zijn",,4010,cm,,
+26,A,"Op natte bodem met abundant bultvormende veenmossen (S. papillosum, S. magellanicum, S. rubellum); kleine veenbes, lavendelhei of eenarig wollegras kunnen aanwezig zijn",,7140_oli,cm + ces°,,andere veenmossoorten zoals S. fallax en S. auriculatum zijn dan meestal ook abundant aanwezig
+26,A,"Op droge bodem; geen uitgesproeken bulten-slenkenpatroon; soorten van droge heide (struikhei, blauwe bosbes, rode dophei, …) min. frequent aanwezig en typische soorten van natte heide (veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies ) afwezig",,4030,cm,,
+26,A,Anders,27,,,,
+,,,,,,,
+27,Q,De door Pijpenstrootje gedomineerde vegetatie maakt deel uit van:,,,,,
+27,A,een groter heideterrein,,"4010,4030",cm,,
+27,A,een open plek omgeven door bos,29,,,,
+27,A,een tijdelijke kapvlakte op kleine open plek (< 1000 m²) in het bos,SLEUTEL,,,BOSSEN_STRUWELEN,
+27,A,de ondergroei van een (recente) bos(aanplant),SLEUTEL,,,BOSSEN_STRUWELEN,
+,,,,,,,
+28,Q,,,,,,
+28,A,"Aanwezigheid van rode bosbes, in combinatie met grote wolfsklauw, klein wintergroen, veenmossen, gewone dophei, dubbelloof, stippelvaren.",,4010,cm + cv,,
+28,A,Anders,,4030,cm + cv,,
+29,Q,,,,,,
+29,A,Struikhei minstens frequent aanwezig,,4030,cm,,
+29,A,Struikhei afwezig of hooguit occasioneel aanwezig,,geen habitat,cm,,
+,,,,,,,
+35,T1,heide met jeneverbes - Juniperus heathland                                ,,,,,
+35,Q,,,,,,
+35,A,Bedekking boomlaag (excl. jeneverbes) < 50%,36,,,,
+35,A,Bedekking boomlaag  (excl. jeneverbes) ≥ 50%,SLEUTEL,,,BOSSEN_STRUWELEN,
+36,Q,,,,,,
+36,A,Minimaal 10 jeneverbesstruiken komen (deels) gegroepeerd voor en bedekken ≥ 10% (minimum oppervlakte = 400 m²),,5130_hei,c.. + jun,,Volg ook stap 1b voor het bepalen van het BWK-deel c..
+36,A,"Jeneverbes aanwezig, maar in lagere aantallen of zeer ijl verspreid",3,,,,"Bij aanwezigheid, het aantal Jeneverbessen vermelden in infoveld."
+37,Q,,,,,,
+37,A,Autochtone populatie binnen het gekende areal (zie Figuur 1),,5130_hei,c.. + jun,,Volg ook stap 1b voor het bepalen van het BWK-deel c..
+37,A,Geen zeer recente (< 10j) aanplant EN er is een plan tot herintrodoctie EN er is (actie tot het bevorderen van) verjonging,,5130_hei,c.. + jun,,Volg ook stap 1b voor het bepalen van het BWK-deel c..
+37,A,Anders,3,,,,Vermeld het aantal Jeneverbessen in infoveld
+38,Q,,,,,,
+38,A,Recent verbost jeneverbesstruweel: minimaal 10 jeneverbesstruiken komen gegroepeerd voor en bedekken ≥ 10%,,5130_hei,sz/c. + jun,,Volg ook stap 1b voor het bepalen van het BWK-deel c..
+38,A,"Recent verboste heide met jeneverbes, maar < 10 exemplaren of zeer ijl verspreid",41,,,,"Bij aanwezigheid, het aantal Jeneverbessen vermelden in infoveld."
+,,,,,,,
+40,T1,Recent verboste heide,,,,,
+40,T2,"Bedekking van struiken en jonge bomen (< 6m) ≥ 50% met minder dan 10% bedekking van hogere (> 6m) bomen en struiken en aandeel typisch soorten van open heide (dwergstruiken, beenbreek, veenpluis, buntgras) ≥ pijpenstrootje, bochtige smele, struisgras, varens en bosplanten",,,,,
+40,Q,,,,,,
+40,A,Jeneverbes aanwezig,38,,,,
+40,A,Jeneverbes afwezig,41,,,,
+41,Q,,,,,,
+41,A,"Op profielloos landduin of met frequent typische soorten van binnenlands (stuif)duin (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",,gh,sz/cg + boomcode,,
+41,A,Op andere droge bodems; ondergroei gedomineerd door struikhei en/of blauwe bosbes,,gh,sz/cg + boomcode,,Vermeld meest aanwezige (max. 2) boom- en/of struiksoort(en)
+41,A,"Op vochtige tot natte bodems; ondergroei gedomineerd door gewone dophei, veenpluis, gagel, veenmossen",42,,,,
+42,Q,,,,,,
+42,A,Gagel is (co)dominant in struiklaag,80,,,,
+42,A,Anders,,gh,sz/ce + boomcode,,Vermeld meest aanwezige (max. 2) boom- en/of struiksoort(en)
+,,,,,,,
+,,,,N2000 habitattype,BWK code,,Opmerking
+50,T1,Open heide en landduin,,,,,
+50,Q,,,,,,
+50,A,"De vegetatie wordt vooral gedomineerd door dwergstruiken, pijpenstrootje, veenmossen en/of veenpluis",51,,,,"dwergstruiken = Calluna, Erica, Vaccinium, Genista"
+50,A,"Onbegroeid tot grotendeels gefixeerd landduin en pioniersvegetaties op weinig humeuze zand- (of lichte leem)grond. De aanwezige vegetatie wordt vooral gedomineerd door grijs kronkelsteeltje, haarmossen, korstmossen, éénjarigen, zandstruisgras, buntgras en/of zandzegge.",60,,,,
+50,A,Open (pioniers)vegetaties op brand- en plagplekken,70,,,,Indien duidelijke sporen van recente brand of plagwerken; bij twijfel -> 60
+,,,,,,,
+51,T2,Open heide,,,,,
+51,Q,,,,,,
+51,A,Veenmosrijke heide met Sphagnum rubellum + slijkzegge,,7110,t,,Enkel bekend van Ven onder de Berg
+51,A,Veenmosrijke heide met bultvormende veenmossen abundant (dikwijls is ook Beenbreek abundant aanwezig),52,,,,
+51,A,"Heischraal grasland: aandeel heischrale soorten (tandjesgras, borstelgras, fijn schapenras, trekrus, tormentil, kruipganzerik, liggende vleugeltjesbloem, heidekartelblad, bleke zegge, veelbloemige veldbies, liggend walstro, tweenervige zegge, gevlekte orchis) > heidesoorten (dwergstruiken, veenmos, beenbreek, zonnedauw, snavelbiezen, veenbies)",SLEUTEL,6230,,GRASLAND,
+51,A,Anders,53,,,,
+,,,,,,,
+52,Q,,,,,,
+52,A,"Veenmosrijke heide met aanwezigheid van kleine veenbes, lavendelheide en/of eenarig wollegras",,7140_oli,ces,,
+52,A,Veenmosrijke heide met hoogveenveenmossen (Sphagnum magellanicum en/of S. rubellum),,7140_oli,ces,,
+52,A,"Veenmosrijke heide met abundant voorkomen van veenmosbulten van S. papillosum, zonder de hierboven vermelde soorten",,7140_oli,ces°,,andere veenmossen zoals S. auriculatum en S. fallax zijn meestal ook abundant aanwezig
+52,A,Anders,53,,,,
+,,,,,,,
+53,Q,,,,,,
+53,A,"Struikhei dominant en typische natte heidesoorten (veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies) < frequent",54,,,,
+53,A,Blauwe en/of rode bosbes (co)dominant in de dwergstruiklaag,55,,,,
+53,A,"Vochtige/natte bodem met dwergstruikenvegetatie van gewone dophei (dikwijls ook struikhei), vaak met goed ontwikkelde moslaag met veenmossen (o.a. S. compactum, S. molle, S. tenellum); ook pijpenstrootje, kleine en ronde zonnedauw, veenpluis, witte snavelbies, veenbies, beenbreek, klokjesgentiaan en/of tweenervige zegge",56,,,,
+53,A,"Ven: tijdens het groeiseizoen is de gezamenlijke bedekking van het open water, waterveenmos, veelstengelige waterbies en knolrus > 70%",SLEUTEL,,,WATEREN,"opgelet, tijdens de winter kunnen ook natte heiden (4010, 7150) tijdelijk onder water staan."
+,,,,,,,
+54,Q,,,,,,
+54,A,"Op profielloos landduin of met frequent typische soorten van binnenlands (stuif)duin (korstmossen, ruig haarmos, buntgras, zandzegge, klein tasjeskruid, vroege haver)",,2310,cg,,
+54,A,op andere bodems,,4030,cg,,
+,,,,,,,
+55,Q,,,,,,
+55,A,"Op stenige noordhellingen, met abundant rode bosbes, in combinatie met gewone dophei, veenmossen, dubbelloof, stippelvaren, grote wolfsklauw, klein wintergroen",,4010,cv,,vochtige bosbeshei
+55,A,Op (noordhelling van) landduinen; meestal met abundant rode bosbes,,2310,cv,,
+55,A,Anders,,4030,cv,,
+,,,,,,,
+56,Q,,,,,,
+56,A,"Aanwezigheid van vegetatievlekken van minstens 4 m² met open, natte pioniersvegetaties, gekenmerkt door het samen minstens abundant aanwezig zijn van moeraswolfsklauw, kleine zonnedauw, witte en/of bruine snavelbies (op plagplekken, langs venoevers of in natte laagten). Typische soorten van natte heide (gewone dophei, veenpluis, beenbreek, klokjesgentiaan, veenbies, pijpenstrootje) nemen in deze zones een kleiner aandeel in dan de vermelde pioniersoorten.",,4010 + 7150,ce,,Aandeel van beide habitattypen inschatten
+56,A,"Afwezigheid van de hierboven beschreven vegetatievlekken; de vermelde soorten komen verspreid in de natte heide voor, de vegetatievlekken zijn < 4 m²  of zijn afwezig",,4010,ce,,
+,,,,,,,
+60A,T2,Binnenlands (stuif)duin,,,,,
+60A,Q,,,,,,
+60A,A,"Open, onbegroeid of (deels) gefixeerde landduin gekenmerkt door korstmossen, ruig haarmos, grijs kronkelsteeltje, buntgras, zandstruisgras, zandzegge, heidespurrie, klein tasjeskruid, vroege haver en struikhei.",61,,,,
+60A,A,Anders,60b,,,,
+60B,Q,,,,,,
+60B,A,aandeel éénjarigen in de vegetatie 10% of meer,64,,,,
+60B,A,aandeel éénjarigen in de vegetatie < 10%,SLEUTEL,,,GRASLANDEN,
+60B,I,"Niet-limitatieve opsomming van veel voorkomende éénjarigen: veldereprijs, hazenpootje, Canadese fijnstraal, eenjarige hardbloem, rode schijnspurrie, akkerviooltje, zandmuur, reigersbek, heidespurrie, straatgras, zandraket, vroegeling, kleine leeuwenklauw, zachte ooievaarsbek, klein streepzaad, eekhoorngras, gewoon langbaardgras, zandhoornbloem, slofhak, …",,,,,
+61,Q,,,,,,
+61,A,"Open, zandplekken ≥ 50%",62,,,,
+61,A,"Open, zandplekken < 50% en aandeel struikhei < 50%",63,,,,
+61,A,"Open, zandplekken < 50% en aandeel struikhei ≥ 50%",,2310,cg,,
+62,Q,,,,,,
+62,A,"Open, zand > 90%",,2330_bu,dm°,,
+62,A,"Open, zandplekken ≥ 50% en ≤ 90%",,2330_bu,dm + hac,,
+63,Q,,,,,,
+63,A,"Open, zandplekken < 10%",,2330_bu,hac,,
+63,A,"Open, zandplekken ≥ 10%",,2330_bu,hac + dm,,
+64,Q,,,,,,
+64,A,"Open grazige vegetatie op van nature kalkarme, droge zandgrond met minstens 2 kensoorten van het dwerghaververbond tezamen frequent aanwezig",,2330_dw,hat,,Indien soorten van 2330_bu en 2330_dw samen voorkomen: wordt niet als een complex van beide subtypen gekarteerd; de soorten met het hoogste aandeel in de vegetatie bepalen het subtype.
+64,A,"Open grazige vegetatie op van nature kalkarme, droge zandgrond met in de kruidlaag een aandeel van minstens 30% kensoorten van het dwerghaververbond",,2330_dw,hat,,
+64,I,"kensoorten dwerghaververbond: Dwergviltkruid, Eekhoorngras, Klein vogelpootje, Klein tasjeskruid, Vroege haver, Zandblauwtjeen Zilverhaver.",,,,,
+64,A,"Open grazige vegetatie met soorten van dwerghaververbond zoals in 2 vorige keuzes beschreven, maar op een ander bodemtype",,rbbha,ha,,
+64,A,Anders,SLEUTEL,,,GRASLANDEN,
+,,,,,,,
+65,T1,heide met dominantie van adelaarsvaren,,,,,
+65,Q,,,,,,
+65,A,Kleine vlek (≤ 400 m²) in een groter heideterrein,,gaat op in de omliggend heide,,,
+65,A,"Grotere vlek (> 400m²) in een groter heideterrein en met minstens frequent dwergstruikenb (struikhei, dophei, bosbes)",66,,,,
+65,A,Anders,SLEUTEL,,,RUIGTEN_PIONIER,
+,,,,,,,
+66,Q,,,,,,
+66,A,Op profielloos landduin,,2310,cp,,
+66,A,Op andere bodems,,4030,cp,,
+,,,,,,,
+,,,,N2000 habitattype,BWK code,,Opmerking
+70,T1,Open (pioniers)vegetaties op brandvlekken of plagplekken in de hei,,,,,
+70,Q,,,,,,
+70,A,Brandplek/plagplek nagenoeg vegetatieloos (< 5% bedekking) en geen permanent water vormend,71,,,,
+70,A,Anders,72,,,,
+71,Q,,,,,,
+71,A,Brand/plagplek in een natte heide,,"4010,7150",c,,info: 'plagplek' of 'brandvlek'
+71,A,Brand/plagplek in een droge heide op een profielloos landduin,,"2310,2330",c,,info: 'plagplek' of 'brandvlek'
+71,A,Brand/plagplek in een droge heide op andere bodems,,4030,c,,info: 'plagplek' of 'brandvlek'
+71,A,Plagplek op een kapvlakte van een bos of struweel,,gh,se,,info: plagplek
+71,A,"Plagplek op een grasland, akker of ander niet-heide biotoop",,gh,ku,,info: plagplek
+72,Q,,,,,,
+72,A,"Pioniersvegetatie met een kruidlaag gedomineerd door witte en/of bruine snavelbies, moeraswolfsklauw en kleine zonnedauw; meestal met een hoog aandeel open bodem (al dan niet met wieren). De soorten van natte heide (gewone dophei, veenpluis, beenbreek, klokjesgentiaan, veenbies, pijpenstrootje) nemen een kleiner aandeel in dan de vermelde pionierssoorten.",,7150,ce,,In periodiek droogvallende heideslenken en op venoevers; Vaak tijdelijk op plagplekken = deel van omliggende heide.
+72,A,Vegetatiebedekking ≥ 30% EN aandeel van grassen in de kruidlaag is > 50%  (= vergraste heide),10,,,,info: 'plagplek' of 'brandvlek'
+72,A,Anders,73,,,,
+73,Q,,,,,,
+73,A,"Een jonge heide op vochtige tot natte bodem met abundant gewone dophei, veenpluis, veenbies, blauwe zegge, snavelbiezen, zonnedauw, … (aandeel natte heidesoorten > aandeel droge heidesoorten)",,4010,ce°,,info: 'plagplek' of 'brandvlek'
+73,A,"Een jonge heide op droge bodem met abundant struikhei, stekelbrem, vroege haver, buntgras, ruig haarmos, … (aandeel droge heidesoorten > aandeel natte heidesoorten)",74,,,,
+73,A,Bij gelijk aandeel van kenmerkende soorten van droge en natte heide en deze samen ministens abundant,,"4010,4030",c,,info: 'plagplek' of 'brandvlek'
+73,A,Anders,75,,,,
+,,,,,,,
+74,Q,,,,,,
+74,A,Op profielloos landduinen met aandeel struikhei > aandeel pioniersoorten,,2310,cg°,,info: 'plagplek' of 'brandvlek'
+74,A,"Op profielloos landduinen met aandeel pioniersoorten (buntgras, grijs kronkelsteeltje, vroege haver, heidespurrie, ruig haarmos) > aandeel struikhei",,2330_bu,hac,,"Indien ≥ 10% open zand, dan wordt dm als eenh2 toegevoegd; info: plagplek"
+74,A,Op andere bodems,,4030,cg°,,info: 'plagplek' of 'brandvlek'
+75,Q,,,,,,
+75,A,"Een plagplek op zeer natte bodem, bijna jaar rand onder water en hoofdzakelijk soorten van voedselarme wateren: open water, waterveenmos, vensikkelmos, knolrus",SLEUTEL,,,WATEREN,
+75,A,"Plagplek met vnl. opslag van jonge bomen, struiken en bramen; indicatieve heidesoorten hoogstens frequent aanwezig",SLEUTEL,,,BOSSEN_STRUWELEN,
+75,A,"Plagplek op van nature kalkarme, droge zandgrond met een kruidlaag gekenmerkt door een hoog aandeel éénjarigen (minstens 10%) waaronder minstens 2 kensoorten van het dwerghaververbond",,2330_dw,hat,,info: 'plagplek'
+75,I,"kensoorten dwerghaververbond: Dwergviltkruid, Eekhoorngras, Klein vogelpootje, Klein tasjeskruid, Vroege haver, Zandblauwtjeen Zilverhaver.",,,,,
+,A,"Plagplek in een heidegebied met kruidlaag gedomineerd door pijpenstrootje, bochtige smele, fijn schapengras en/of struisgrassen.",,"4010,4030",c,,"info: 'plagplek'; op basis van aanwezige
+ heidesoorten en/of vorige kartering kan tot 4010 of 4030 beslist worden"
+,A,Plagplek met indicatieve heidesoorten afwezig of hoogstens frequent aanwezig.,,76,,,info: 'plagplek'
+76,Q,,,,,,
+76,A,"Soortenrijke, bloemrijke vegetaties met meerdere bijzondere soortensamen frequent aanwezig:",,gh,ku*,,"Indien deze soortenlijst in combinatie met hoge bedekking aan invasieve planten, wordt de karteringseenheid intermediair: ku"
+,I,"vb. grondster, duizendguldenkruidsoorten, sierlijke/tengere vetmuur, slangenkruid, wijdbloeide rus, ...",,,,,
+,I,Aanwezigheid van zeldzamere doelsoorten bij recente natuurontwikkeling.,,,,,
+,I,"Indien één van volgende soorten aanwezig: wijdbloeiende rus, naaldwaterbies, geel cypergras, glaskroos, eivormige waterbies, draadgentiaan, dwergbloem, koprus, priemkruid of dwergrus: controleer ook met de watersleutel voor HT 3130_na.",,,,,
+,A,Aandeel aan uitheemse invasieve planten in de vegetatie ≥ 50% :,,gh,ku°,,
+,I,"Uitheemse (zeer) invasieve planten: aardpeer, Afghaanse duizendknoop, alsemambrosia, beklierde basterdwederik, bezemkruiskruid, bleek cypergras, Canadese en late guldenroede, Japanse/Boheemse/Sachalinse duizendknoop, kokardebloem, Nieuwnederlandse aster, reuzenbalsemien, reuzenberenklauw, rimpelroos, schijnaardbei, smalle aster, slipbladige rudbeckia, struikaster, teunisbloem spec., (valse) wingerd, vaste lupine, vlakke dwergmispel, vlinderstruik, wilgaster, zwart tandzaad.",,,,,Gebaseerd op het ISEIA-protocol (Branquart 2017)
+,A,Anders,,gh,ku,,
+,,,,,,,
+,,,,,,,
+,,,,N2000 habitattype,BWK code,,Opmerking
+80,T1,heide met wilde gagel (kroonprojectie ≥ 50% gagel),,,,,
+80,Q,,,,,,
+80,A,Gemiddelde hoogte van de gagelstruiken ≥ 1m boven maaiveld,81,,,,
+80,A,Gemiddelde hoogte van de gagelstruiken < 1m boven maaiveld,82,,,,
+81,Q,,,,,,
+81,A,Boomlaag (≥ 6 m) < 10% bedekkend,,rbbsm,sm,,
+81,A,"Boomlaag (≥ 6 m) ≥ 10%, maar < 50% bedekkend",,rbbsm,smb,,
+81,A,Boomlaag (≥ 6 m) ≥ 50% bedekkend,SLEUTEL,,,BOSSEN_STRUWELEN,
+82,Q,,,,,,
+82,A,Boomlaag (≥ 6 m) ≥ 50% bedekkend,SLEUTEL,,,BOSSEN_STRUWELEN,
+82,A,Anders,83,,,,
+83,Q,,,,,,
+83,A,"Typische soorten van natte heide (gewone dophei, veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies) minstens abundant in de ondergroei",,4010,ce+myr,,gagelrijke natte heide
+83,A,"Typische soorten van natte heide (gewone dophei, veenpluis, beenbreek, zonnedauw, witte snavelbies, klokjesgentiaan of veenbies) hooguit frequent in de ondergroei",,4010,cm+myr,,gagelrijke natte heide
+83,A,"Venige natte heide met abundant bultvormende veenmossen (S. papillosum, S. magellanicum, S. rubellum) en/of aanwezigheid van kleine veenbes, lavendelhei of eenarig wollegras",,7140_oli,ces+myr,,gagelrijk overgangsveen

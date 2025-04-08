@@ -137,7 +137,7 @@ def AddDataLayers(project):
     return layers
 
 
-def ExtentByLayer(lyr):
+def ZoomTo(lyr):
     # set extent and refresh
     # https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/composer.html#simple-rendering
     settings = QgsMapSettings()
@@ -349,24 +349,36 @@ def LinkElements(form):
 if __name__ == "__main__":
     project = QgisProject("test.qgs")
     data_layers = AddDataLayers(project)
-    ExtentByLayer(data_layers["garden"])
+    # ZoomTo(data_layers["garden"])
 
     form_structure = [
         FormWidget("mycategory", dtype = QMetaType.Type.QString, \
                     widget = QgsEditorWidgetSetup('ValueMap', {'map': {'Red': 'R', 'Green': 'G', 'Blue': 'B'}}) \
                     ), \
+        \
         FormContainer("Red habitat", condition = "\"mycategory\" = 'R'"), \
-        FormWidget("text", dtype = QMetaType.Type.QString, \
-                    widget = widget_library["multiline"], \
+        FormWidget("red subtype", dtype = QMetaType.Type.Bool, \
+                    widget = widget_library["checkbox"], \
                     parent = "Red habitat"), \
+        FormContainer("Red A", condition = "\"red subtype\" = TRUE"), \
+        FormWidget("text A", dtype = QMetaType.Type.QString, \
+                    widget = widget_library["multiline"], \
+                    parent = "Red A"), \
+        FormContainer("Red B", condition = "\"red subtype\" = FALSE"), \
+        FormWidget("text B", dtype = QMetaType.Type.QString, \
+                    widget = widget_library["multiline"], \
+                    parent = "Red B"), \
+        \
         FormContainer("Green habitat", condition = "\"mycategory\" = 'G'"), \
         FormWidget("time", dtype = QMetaType.Type.Int, \
                     widget = widget_library["date"], \
                     parent = "Green habitat"), \
+        \
         FormContainer("Blue habitat", condition = "\"mycategory\" = 'B'"), \
         FormWidget("photo", dtype = QMetaType.Type.QString, \
                     widget = widget_library["image"], \
                     parent = "Blue habitat"), \
+        \
         FormWidget("done", dtype = QMetaType.Type.Bool, \
                     widget = widget_library["checkbox"], \
                     ) \
