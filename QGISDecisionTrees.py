@@ -17,7 +17,8 @@ Thank you for the programming task.
 - Other constructor functions (e.g. "DecisionTree.read_googledocs(google_fileid)")
 - DO NOT use merged cells, please!
 - Qn 4 has only one answer (and it is a loop)
-
+- valid filename in PrintGraph()
+- print_answer() hardening
 """
 
 #_______________________________________________________________________________
@@ -25,6 +26,7 @@ Thank you for the programming task.
 #_______________________________________________________________________________
 # We build on the concepts of others.
 
+from collections.abc import Callable # for typestrings
 import numpy as NP
 import pandas as PD
 from difflib import SequenceMatcher # substring matching
@@ -37,6 +39,7 @@ from difflib import SequenceMatcher # substring matching
 - common substrings of descriptions: https://stackoverflow.com/questions/58585052/find-most-common-substring-in-a-list-of-strings
 - sorting dict by values: https://stackoverflow.com/a/613218
 - graphviz and pydot: https://medium.com/data-science/graph-visualisation-basics-with-python-part-iii-directed-graphs-with-graphviz-50116fb0d670
+- typestrings: https://docs.python.org/3/library/typing.html
 """
 
 
@@ -88,7 +91,29 @@ class DecisionTree(dict):
             print(f"\n________ {step} ________")
             print(str(self[step]))
 
-    def Graph(self):
+
+    def ApplyToNodes(self, apply_function: Callable[[object], None]):
+        # recursively apply a function to all nodes
+        result = {}
+
+        def RecursiveApply(tree_node):
+
+            result[tree_node.idx] = apply_function(tree_node)
+
+            for term, child in tree_node.Traverse():
+                if not term:
+                    # proceed to non-terminal nodes
+                    RecursiveApply(child)
+
+        RecursiveApply(self.root)
+        return(result)
+
+
+
+
+    def PrintGraph(self, filename):
+        # TODO check valid filename
+
         import pydot as DOT
 
         graph = DOT.Dot(graph_type = "digraph")
@@ -133,7 +158,7 @@ class DecisionTree(dict):
         for edge in set(edges):
             graph.add_edge(edge)
 
-        graph.write_svg("heidesleutel.svg")
+        graph.write_svg(filename)
 
 
 
@@ -176,10 +201,23 @@ class TreeNode(dict):
         ### and [I]: extra information
         for typ in self.types:
             if typ in ["A", "Q"]:
+                # answers and questions are special
                 next
-            self[str(typ)] = [*[", ".join(map(str, RowsByType(rows, t_type)["name"].values)) \
+
+            # this is about "T"/headers and "I"/info
+            self[str(typ)] = \
+                    [", ".join(map(str, RowsByType(rows, t_type)["name"].values)) \
                          for t_type in self.types \
-                         if t_type[0] == typ]]
+                         if t_type[0] == typ ] \
+            # print(self[str(typ)])
+
+        # print(self.get("I", None))
+        # add remarks on the question line
+        remarks = [rem.strip() for rem in RowsByType(rows, "Q")["remark"] \
+                   if str(rem).lower() != "nan"]
+        if len(remarks) > 0:
+            self["I"] = [info for info in [*self.get("I", []), *list(remarks)] \
+                         if info != ""]
 
         ### [A]: Possible Answers
         self["A"] = {i: row.astype(str).to_dict() \
@@ -226,6 +264,11 @@ class TreeNode(dict):
                 children.append((False, self.tree[answer["next_step"]]))
 
         return children
+
+
+    def ExtraInfo(self):
+        # print extra info
+        return self.get("I", None)
 
 
     def __str__(self, print_remark = False):
@@ -277,6 +320,10 @@ def print_answer(answer):
         out += answer['next_step']
 
     return out
+
+def get_remark(answer):
+    print(answer["remark"])
+    return answer["remark"]
 
 def isna(answer, key):
     return str(answer[key]) == "nan"
@@ -348,4 +395,13 @@ if __name__ == "__main__":
     # print(dt.root)
     # dt.Print()
     # print ("\n____\n".join(map(str, [tr[1] for tr in dt.root.Traverse()])))
-    dt.Graph()
+    # dt.PrintGraph("heidesleutel.svg")
+
+    # print("\n".join(
+    #     [f"{k}: {v}" \
+    #      for k, v \
+    #      in dt.ApplyToNodes(lambda node: node.ExtraInfo()).items() \
+    #     ]))
+
+    # for answer in dt.root.GetAnswers():
+    #     get_remark(answer)
