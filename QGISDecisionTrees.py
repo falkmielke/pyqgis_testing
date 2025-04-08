@@ -114,8 +114,6 @@ class DecisionTree(dict):
         return(result)
 
 
-
-
     def PrintGraph(self, filename):
         # TODO check valid filename
 
