@@ -19,6 +19,8 @@ Thank you for the programming task.
 - Qn 4 has only one answer (and it is a loop)
 - valid filename in PrintGraph()
 - print_answer() hardening
+- XML (nested) file format: save and restore
+
 """
 
 #_______________________________________________________________________________
@@ -58,10 +60,13 @@ RowsByType = lambda df, typ, typcol = "type": df.loc[df[typcol].values == typ, :
 # This dict-derived object will carry the structure of all the decision nodes.
 
 class DecisionTree(dict):
-    def __init__(self, data: PD.DataFrame):
+    def __init__(self, data: PD.DataFrame, meta: dict = None):
         # builds a tree from a data frame
         # which should have columns:
         #     step, type, name, next_step, classification, bwk_code, subkey, remark
+
+        # store meta info
+        self.meta = meta
 
         # lower all column names
         data.rename(columns = {col: col.lower() for col in data.columns}, inplace = True)
@@ -176,8 +181,19 @@ class DecisionTree(dict):
         # load a decision tree from a csv
         # passes arguments through to pandas.read_csv
 
+        # read meta info
+        meta = None
+        header = kwargs.get("header", 0)
+        if header > 0:
+            meta = PD.read_csv(csv_path, index_col = 0, nrows = header, header = None)
+            meta = meta.iloc[:, :1].reset_index(drop = False, inplace = False)
+            meta = {r[0]: r[1] for _, r in meta.iterrows()}
+
+        # read data
         data = PD.read_csv(csv_path, *args, **kwargs)
-        return cls(data)
+
+        # instantiate a DecisionTree and return it.
+        return cls(data, meta = meta)
 
 
 #_______________________________________________________________________________
