@@ -289,7 +289,12 @@ class QgisFormLayer(object):
         self.layer.updateFields()
         self.project.project.addMapLayer(self.layer)
 
-# Finally, exitQgis() is called to remove the
+
+# https://gis.stackexchange.com/a/346374
+# layer = QgsProject.instance().mapLayersByName('Heidesleutel')[0]
+# ews = layer.editorWidgetSetup(layer.fields().indexFromName("0"))
+# print("Type:", ews.type())
+# print("Config:", ews.config())
 
 # provider and layer registries from memory
 # TODO atexit?
@@ -426,6 +431,78 @@ def CreateQGISForm(project, sleutel):
     return(form)
 
 
+def AddRootButton(project, determination):
+
+    # project = QgsProject.instance()
+    project = project
+    # print(determination.meta) # {'Key': 'Heidesleutel', 'Titel': 'Veldsleutel voor Heide', 'Versie': 'versie2_20230731', 'Auteurs': 'xxyy'}
+    layer_name = determination.meta['Key']
+    layer_provider = "memory"
+
+    layer = QgsVectorLayer("Point", layer_name, layer_provider)
+
+    node = determination.root
+    field_label = f"Question{node.idx}"
+    question_text = node["Q"]
+
+
+    data_provider = layer.dataProvider()
+
+    ## (I) Add all fields
+    data_provider.addAttributes([ \
+            QgsField(field_label, QMetaType.Type.QString)
+        ])
+    layer.updateFields()  # update your vector layer from the datasource
+    # layer.commitChanges()  # update your vector layer from the datasource
+
+    # find fields back by index
+    field_lookup = layer.fields()
+    fldidx = lambda field_name: field_lookup.indexFromName(field_name)
+
+
+
+    ## (II) form configuration
+    form_config = layer.editFormConfig()
+    form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
+    root_container = form_config.invisibleRootContainer()
+
+    # remove all existing items
+    root_container.clear()
+
+
+    form_qn_text = QgsAttributeEditorTextElement(name = "Q0:", parent = root_container)
+    form_qn_text.setText(question_text)
+    root_container.addChildElement(form_qn_text)
+
+    value_map = {"map":
+        {
+            answer["name"]: answer["next_step"]
+            for answer in node["A"].values()
+        }
+    }
+
+    widget_config = QgsEditorWidgetSetup(
+        # 'TextEdit', {'IsMultiline': True, 'UseHtml': False}
+        'ValueMap', value_map
+        )
+
+    layer.setEditorWidgetSetup(fldidx(field_label), widget_config)
+    form_config.setLabelOnTop(fldidx(field_label), True)
+
+    # !!! the name must be the field label
+    form_element = QgsAttributeEditorField( \
+                name = field_label, \
+                idx = fldidx(field_label), \
+                parent = root_container \
+            )
+    root_container.addChildElement(form_element)
+
+    ## clean up
+    layer.setEditFormConfig(form_config)
+
+    layer.commitChanges()  # update your vector layer from the datasource
+    layer.updateFields()
+    project.project.addMapLayer(layer)
 
 
 if __name__ == "__main__":
@@ -435,7 +512,9 @@ if __name__ == "__main__":
 
     heidesleutel = QGT.DecisionTree.from_csv("./sleutels/Heidesleutel_digitaal_werkversie.csv", sep = ",", header = 4)
 
-    CreateQGISForm(project, heidesleutel)
+    # CreateQGISForm(project, heidesleutel)
+
+    AddRootButton(project, heidesleutel)
 
 
     # form_structure = [
