@@ -6,24 +6,38 @@ from qgis.core import *
 from qgis.gui import *
 from qgis.utils import *
 from qgis.PyQt.QtCore import QMetaType, QVariant
+
 import pathlib as pl
+import atexit
 
 # custom
 import QGISDecisionTrees as QGT
 
 
+# TODO alternating checkboxes https://stackoverflow.com/questions/36281103/change-checkbox-state-to-not-checked-when-other-checkbox-is-checked-pyqt
 # TODO get satellite imagery
+# TODO extent Belgium?
+
+# TODO DecisionTree adjustment:
+#     There are more steps with no predecessor (76, 37, 24) -> now via clades
 
 
-widget_library = {}
 
-widget_library["multiline"] = QgsEditorWidgetSetup(
+# https://gis.stackexchange.com/a/346374
+# layer = QgsProject.instance().mapLayersByName('Heidesleutel')[0]
+# ews = layer.editorWidgetSetup(layer.fields().indexFromName("0"))
+# print("Type:", ews.type())
+# print("Config:", ews.config())
+
+widget_catalogue = {}
+
+widget_catalogue["multiline"] = QgsEditorWidgetSetup(
     'TextEdit', {
         'IsMultiline': True,
         'UseHtml': False
     })
 
-widget_library["attachment"] = QgsEditorWidgetSetup(
+widget_catalogue["attachment"] = QgsEditorWidgetSetup(
     'ExternalResource', {
         'FileWidget': True,
         'DocumentViewer': 0,
@@ -35,7 +49,7 @@ widget_library["attachment"] = QgsEditorWidgetSetup(
         'FileWidgetFilter': ''
     })
 
-widget_library["checkbox"] = QgsEditorWidgetSetup(
+widget_catalogue["checkbox"] = QgsEditorWidgetSetup(
     'CheckBox', {
         'AllowNullState': True,
         # 'CheckedState': '',
@@ -43,7 +57,7 @@ widget_library["checkbox"] = QgsEditorWidgetSetup(
         # 'UncheckedState': ''
     })
 
-widget_library["date"] = QgsEditorWidgetSetup(
+widget_catalogue["date"] = QgsEditorWidgetSetup(
     'DateTime', {
         'allow_null': True,
         'calendar_popup': True,
@@ -53,7 +67,7 @@ widget_library["date"] = QgsEditorWidgetSetup(
         'field_iso_format': False
     })
 
-widget_library["image"] = QgsEditorWidgetSetup(
+widget_catalogue["image"] = QgsEditorWidgetSetup(
     'ExternalResource', {
         'DocumentViewer': 0,
         'DocumentViewerHeight': 0,
@@ -74,6 +88,14 @@ widget_library["image"] = QgsEditorWidgetSetup(
 
 
 
+def AddInfoText(parent, text, label = ""):
+    text_element = QgsAttributeEditorTextElement(name = label, parent = parent)
+    text_element.setText(text)
+    parent.addChildElement(text_element)
+
+
+
+
 class QgisProject(object):
 
     def __init__(self, filename):
@@ -81,6 +103,8 @@ class QgisProject(object):
         self.InitQgisApplication()
         self.CreateQgisProject()
         self.Save()
+
+        atexit.register(self.Exit)
 
     def InitQgisApplication(self):
         # https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/intro.html#using-pyqgis-in-standalone-scripts
@@ -113,6 +137,10 @@ class QgisProject(object):
         # Read input parameters from GP dialog
         self.save_filename = self.path/self.filename
         check = self.project.write(str(self.save_filename))
+
+    def Exit(self):
+        self.app.exitQgis()
+
 
 
 def AddDataLayers(project):
@@ -154,355 +182,279 @@ def AddDataLayers(project):
 
 
 
-class QgisFormLayer(object):
+class QgisFormDecisionTree(QGT.DecisionTree):
+    # The functional combination of a decision tree and a form.
+    # Takes a decision tree, copies its content,
+    # but provides extra functionality to create a QGIS form.
 
-    def __init__(self, project, \
+    def __init__(self, \
+                 tree: QGT.DecisionTree, \
+                 project: QgisProject, \
                  name: str = "", \
                  provider: str = None, \
-                 fields: list = [], \
-                 verbose = False
+                 verbose: bool = False
                  ):
+
+        # Copy tree attributes
+        self.CopyTree(tree)
+
         ## data layers
         self.project = project
         self.name = name
         self.provider = provider
         if self.provider is None:
             self.provider = "memory"
+
+        # initialize an empty layer
         self.layer = QgsVectorLayer("Point", self.name, self.provider)
-        self.fields = fields
-        self.verbose = verbose
-
-        # make sure elements are linked
-        LinkElements(self.fields)
-
-        self.CreateFields()
-
-        self.CreateForm()
-
-
-    def CreateFields(self):
-
-        # access the real datasource behind your layer (for instance PostGIS)
         self.data_provider = self.layer.dataProvider()
-        if (self.fields is None) or (len(self.fields) < 1):
-            print("QgisFormLayer `fields` must be a list of form elements" +
-                          " to create `QgsField`s.")
-
-        ## (I) Add all fields
-        self.data_provider.addAttributes([ \
-                QgsField(element["label"], element["dtype"]) \
-                for element in self.fields \
-                if not element.is_container \
-            ])
-        self.layer.updateFields()  # update your vector layer from the datasource
-        # layer.commitChanges()  # update your vector layer from the datasource
-
-        # find fields back by index
-        field_lookup = self.layer.fields()
-        self.fldidx = lambda field_name: field_lookup.indexFromName(field_name)
-
-        if self.verbose:
-            print(["(" + str(self.fldidx(element["label"])) + ") " \
-                       + element["label"] \
-                    for element in self.fields \
-                    if not element.is_container])
-
-
-
-
-    def CreateForm(self):
-
-        ## (II) form configuration
         self.form_config = self.layer.editFormConfig()
         self.form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
-        self.root_container = self.form_config.invisibleRootContainer()
 
-        # remove all existing items
-        self.root_container.clear()
+        self.verbose = verbose
 
+        # (II) create answer fields
+        self.AssembleAllFields()
 
+        # (I) create recursive container structure (by clades)
+        self.CladeContainers()
 
-        ## create containers
-        self.containers = {}
-        for container in [element for element in self.fields if element.is_container]:
+        # (III) add all nodes to their respective clade
+        self.FormNodeForms()
 
-            ## a container which contain more fields
-            label = container["label"]
-            parent = container.parent_link
-            if parent is None:
-                parent = self.root_container
+        # (IV) tip nodes: possible classifications
+        # will receive extra containers and text
+        # hopefully only visible one at a time
 
-            self.containers[label] = QgsAttributeEditorContainer(name = label, parent = parent)
-            container.link_q = self.containers[label]
+        # (V) define container visibility
+        # (add checkbox to hide)
+        self.SetDynamicVisibilities()
 
-            if self.verbose:
-                print(f'created container "{label}": ', str(container.link_q))
-
-            # visibility
-            condition = container["condition"]
-            if condition is not None:
-                visexp = QgsExpression(condition)
-                self.containers[label].setVisibilityExpression(QgsOptionalExpression(visexp))
+        # Clean up
+        self.FinishFormCreation()
 
 
-        ## https://qgis.org/pyqgis/3.40/core/QgsAttributeEditorElement.html
-        ## https://gis.stackexchange.com/q/444315
+    def CopyTree(self, other_tree):
+        # we already inherit all the functions of a tree,
+        # yet to become a true tree, one must copy all the branches and leaves.
+
+        ot = other_tree
+
+        # bring in all the data variables
+        self.meta = ot.meta
+        self.clades = ot.clades
+        self.steps = ot.steps
+        self.root = ot.root
+
+        # copy nodes
+        for idx, node in ot.items():
+            self[idx] = node
 
 
-        ## fill with elements
-        for field in [element for element in self.fields if not element.is_container]:
-            label = field["label"]
-            parent = field.parent_link
-            if parent is None:
-                parent_q = self.root_container
-            else:
-                parent_q = parent.link_q
+    def AssembleAllFields(self):
+        # traverse the tree and grab all which must be decided
+        # currently, for each question, one answer is stored (as String)
 
-            self.layer.setEditorWidgetSetup(self.fldidx(label), field["widget"])
-            self.form_config.setLabelOnTop(self.fldidx(label), True)
+        # AssembleField = lambda node: (f"Answer_{node.idx}", QMetaType.Type.QString)
+        # all_fields = self.ApplyToNodes(AssembleField)
 
-            new_field = QgsAttributeEditorField( \
-                name = label, \
-                idx = self.fldidx(label), \
-                parent = parent_q \
+        if self.verbose:
+            print("### Assembling fields for all questions and containers.")
+
+        self.data_provider.addAttributes(
+            [QgsField(f"classification", QMetaType.Type.QString)] \
+            # + [QgsField(f"hideClade_{clnr}", QMetaType.Type.QString) \
+            #    for clnr in self.clades.keys() \
+            #    if clnr not in ["root"]] \
+            + [QgsField(f"Answer_{step}", QMetaType.Type.QString) \
+               for step in self.steps] \
             )
-            field.link_q = new_field
+        self.layer.updateFields()  # feed changes on the vector layer to the datasource
+
+        # convenience function, see below
+        self.field_index_lookup = lambda field_label: \
+            self.layer.fields().indexFromName(field_label)
+
+        if self.verbose:
+            print("\t...done.")
+
+
+    def CladeContainers(self):
+        # assemble clade containers
+        # there is a hierarchy in the "T1"/"T2" headers
+        # but it is not that strict:
+        #    - There are T1 with no T2
+        #    - There are T1 with exactly one T2 (possibly extra info)
+        #    - There are questions under a T1 but outside any of the T2
+        # This function assesses this clade structure (via string structure)
+        #     and creates the right containers.
+
+        if self.verbose:
+            print("### Creating containers...")
+        self.containers = {}
+        self.containers["root"] = self.form_config.invisibleRootContainer()
+        self.containers["root"].clear()
+
+        AddInfoText(parent = self.containers["root"], text = self.meta["Titel"])
+
+        for clade_idx in self.clades.keys():
+            parent = self.containers["root"]
+            if ">>" in clade_idx:
+                parent = self.containers[clade_idx.split(">>")[0]]
 
             if self.verbose:
-                print(f'created field "{label}": ', str(field.link_q))
+                print("\tcreating container for ", clade_idx, self.clades[clade_idx])
 
-        ## link the children in order of appearance
-        for element in self.fields:
-            if element.parent_link is None:
-                self.root_container.addChildElement(element.link_q)
+            self.containers[clade_idx] = \
+                QgsAttributeEditorContainer(name = self.clades[clade_idx], parent = parent)
 
-                if self.verbose:
-                    print(f"adding {element['label']} to root.")
-            else:
-                element.parent_link.link_q.addChildElement(element.link_q)
-                if self.verbose:
-                    print(f"adding {element['label']} to {element.parent_link['label']}.")
+        if self.verbose:
+            print("\t...done.")
 
 
-        ## write form
+    def FormConfigPreparation(self):
+        # prepare form configuration
+
+        if self.verbose:
+            print("### Adjusting form configurator...")
+
+
+        if self.verbose:
+            print("\t...done.")
+
+
+    def FormNodeForms(self):
+        # For each question, assemble a form in a container
+        # and append it to the clade container
+
+        if self.verbose:
+            print("### Form blocks per question:")
+
+        # store refs to the question elements
+        self.question_blocks = {}
+
+        for idx, node in self.GetAllNodes().items():
+            # prepare question
+
+            field_idx = self.field_index_lookup(f"Answer_{idx}")
+            question = QuestionBlock(
+                idx, node, field_idx = field_idx,
+                parent = self.containers[node.clade]
+            )
+
+            # widget style
+            widget = question.ConstructValueMapWidget()
+            self.layer.setEditorWidgetSetup(field_idx, widget)
+            self.form_config.setLabelOnTop(field_idx, False)
+
+            # assemble the form block
+            if self.verbose:
+                print(idx, " deploying question ", node["Q"])
+            question.DeployQuestionBlock()
+
+            # keep reference
+            self.question_blocks[idx] = question
+
+        if self.verbose:
+            print("\t...done.")
+
+
+    def SetDynamicVisibilities(self):
+        pass
+        # (1) add checkboxes to COLLAPSE COMPLETED clades
+        # (2) hide CLADES/QUESTIONS if they were not reached yet
+
+
+    def FinishFormCreation(self):
+        # update and save
+
+        # add all containers
+        for clade_idx in self.clades.keys():
+            parent = self.containers["root"]
+            if ">>" in clade_idx:
+                parent = self.containers[clade_idx.split(">>")[0]]
+
+            parent.addChildElement(self.containers[clade_idx])
+
+
+        # connect the form configuration
+        self.layer.updateFields()
         self.layer.setEditFormConfig(self.form_config)
+
+        # update/add layer and write form
         self.layer.updateFields()
         self.project.project.addMapLayer(self.layer)
+        self.project.Save()
 
 
-# https://gis.stackexchange.com/a/346374
-# layer = QgsProject.instance().mapLayersByName('Heidesleutel')[0]
-# ews = layer.editorWidgetSetup(layer.fields().indexFromName("0"))
-# print("Type:", ews.type())
-# print("Config:", ews.config())
 
 # provider and layer registries from memory
 # TODO atexit?
 
+class QuestionBlock(object):
+    # a single block for a question
+    # (essentially just a wrapper for uniform style)
 
-class FormElement(dict):
-    def __init__(self, label, dtype = None, parent = None,
-            condition = None, widget = None
-        ):
-        self["label"] = label
-        if dtype is not None:
-            self["dtype"] = dtype
-        self["parent"] = parent
+    def __init__(self, idx, node,
+                 field_idx, parent):
+        self.idx = idx
+        self.node = node
+        self.field_idx = field_idx
+        self.parent = parent
 
-        # flag containers
-        self.is_container = None
+        self.label = f"Question {idx}"
 
-        # to be filled in a later step
-        self.parent_link = None # link to parent
-        self.children = [] # link to children
-        self.link_q = None # link to the qgis form object
+        self.next_steps = [answer["next_step"] for answer in self.node.GetAnswers()]
 
 
-    def Link(self, structure):
-        labels = [element["label"] for element in structure]
+    def ConstructValueMapWidget(self):
+        # create a value map widget from the possible answers
 
-        # find the parent by label
-        if self["parent"] in labels:
-            self.parent_link = structure[labels.index(self["parent"])]
-
-        if self.parent_link is not None:
-            # append self to the children of the parent
-            self.parent_link.children.append(self)
-
-
-
-
-class FormWidget(FormElement):
-    def __init__(self, label, dtype, widget, parent = None):
-        super(FormWidget, self).__init__(label = label, dtype = dtype, parent = parent)
-        self["widget"] = widget
-        self.is_container = False
-
-class FormContainer(FormElement):
-    def __init__(self, label, condition = None, parent = None):
-        super(FormContainer, self).__init__(label = label, parent = parent)
-        self["condition"] = condition
-        self.is_container = True
-
-def LinkElements(form):
-    # clear links
-    for element in form:
-        element.children = []
-        element.parent_link = None
-    # re-link
-    for element in form:
-        element.Link(form)
-
-
-
-
-
-def CreateQGISForm(project, sleutel):
-    form = []
-
-    project = project
-    # print(sleutel.meta) # {'Key': 'Heidesleutel', 'Titel': 'Veldsleutel voor Heide', 'Versie': 'versie2_20230731', 'Auteurs': 'xxyy'}
-    name = sleutel.meta['Key']
-    provider = "memory"
-
-    layer = QgsVectorLayer("Point", name, provider)
-
-    ### test: root layer
-    node = sleutel.root
-    idx = node.idx
-    condition = None
-
-    # root_form = CreateQuestionForm(sleutel.root)
-    l_field = f"{idx}"
-    c_label = f"C{idx}"
-    q_label = f"Q{idx}"
-
-    data_provider = layer.dataProvider()
-    data_provider.addAttributes([ \
-        QgsField(l_field, QMetaType.Type.QString) \
-    ])
-    layer.updateFields()  # update your vector layer from the datasource
-
-    field_lookup = layer.fields()
-    fldidx = lambda field_name: field_lookup.indexFromName(field_name)
-
-
-    form_config = layer.editFormConfig()
-    form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
-    root_container = form_config.invisibleRootContainer()
-    root_container.clear()
-
-    # https://qgis.org/pyqgis/3.40/core/QgsAttributeEditorElement.html
-    conti = QgsAttributeEditorContainer(name = c_label,
-                                parent = root_container)
-
-    if condition is not None:
-        visexp = QgsExpression(condition)
-        self.containers[label].setVisibilityExpression(QgsOptionalExpression(visexp))
-
-    # qn_text = QgsAttributeEditorTextElement(name = "", parent = conti)
-    # qn_text.setText("testing this")
-
-    print(fldidx(l_field))
-    layer.setEditorWidgetSetup(fldidx(l_field),
-        QgsEditorWidgetSetup(
-            'ValueMap', \
-            {'map': {'answer1': '2', 'answer2': '4', 'answer3': '1'}} \
-        ))
-    form_config.setLabelOnTop(fldidx(l_field), True)
-
-
-    new_field = QgsAttributeEditorField( \
-        name = q_label, \
-        idx = fldidx(l_field), \
-        parent = root_container \
-    )
-
-    # conti.addChildElement(qn_text)
-    conti.addChildElement(new_field)
-    root_container.addChildElement(conti)
-
-
-    layer.setEditFormConfig(form_config)
-    layer.updateFields()
-    project.project.addMapLayer(layer)
-
-
-    return(form)
-
-
-def AddRootButton(project, determination):
-
-    # project = QgsProject.instance()
-    project = project
-    # print(determination.meta) # {'Key': 'Heidesleutel', 'Titel': 'Veldsleutel voor Heide', 'Versie': 'versie2_20230731', 'Auteurs': 'xxyy'}
-    layer_name = determination.meta['Key']
-    layer_provider = "memory"
-
-    layer = QgsVectorLayer("Point", layer_name, layer_provider)
-
-    node = determination.root
-    field_label = f"Question{node.idx}"
-    question_text = node["Q"]
-
-
-    data_provider = layer.dataProvider()
-
-    ## (I) Add all fields
-    data_provider.addAttributes([ \
-            QgsField(field_label, QMetaType.Type.QString)
-        ])
-    layer.updateFields()  # update your vector layer from the datasource
-    # layer.commitChanges()  # update your vector layer from the datasource
-
-    # find fields back by index
-    field_lookup = layer.fields()
-    fldidx = lambda field_name: field_lookup.indexFromName(field_name)
-
-
-
-    ## (II) form configuration
-    form_config = layer.editFormConfig()
-    form_config.setLayout(Qgis.AttributeFormLayout(1)) # drag&drop
-    root_container = form_config.invisibleRootContainer()
-
-    # remove all existing items
-    root_container.clear()
-
-
-    form_qn_text = QgsAttributeEditorTextElement(name = "Q0:", parent = root_container)
-    form_qn_text.setText(question_text)
-    root_container.addChildElement(form_qn_text)
-
-    value_map = {"map":
-        {
-            answer["name"]: answer["next_step"]
-            for answer in node["A"].values()
+        value_map = {"map": \
+            {answer["name"]: answer["next_step"] \
+             for answer in self.node.GetAnswers()} \
         }
-    }
 
-    widget_config = QgsEditorWidgetSetup(
-        # 'TextEdit', {'IsMultiline': True, 'UseHtml': False}
-        'ValueMap', value_map
-        )
+        return QgsEditorWidgetSetup('ValueMap', value_map)
 
-    layer.setEditorWidgetSetup(fldidx(field_label), widget_config)
-    form_config.setLabelOnTop(fldidx(field_label), True)
 
-    # !!! the name must be the field label
-    form_element = QgsAttributeEditorField( \
-                name = field_label, \
-                idx = fldidx(field_label), \
-                parent = root_container \
+    def DeployQuestionBlock(self):
+        # question container
+        self.container = QgsAttributeEditorContainer( \
+            name = self.label,
+            parent = self.parent
             )
-    root_container.addChildElement(form_element)
 
-    ## clean up
-    layer.setEditFormConfig(form_config)
+        # question text
+        print(self.node["Q"])
 
-    layer.commitChanges()  # update your vector layer from the datasource
-    layer.updateFields()
-    project.project.addMapLayer(layer)
+        AddInfoText(self.container, self.node["Q"])
+
+        # add info text
+        for info in self.node.get("I", []):
+            AddInfoText(self.container, info, "Q:   ")
+
+
+        # print(f"\n___ +{self.idx}+ ________________")
+        # answers = node.GetAnswers()
+        # print([list(answer.keys()) for answer in answers])
+        # ['name', 'next_step', 'classification', 'bwk_code', 'subkey', 'remark']
+
+        # answer text previews
+        for answer_id, answer in enumerate(self.node.GetAnswers()):
+            AddInfoText(self.container, answer["name"], f" - A:")
+
+        # answer dropdown
+        answer_form_element = QgsAttributeEditorField( \
+            name = f"Answer_{self.idx}", \
+            idx = self.field_idx, \
+            parent = self.container \
+           )
+        self.container.addChildElement(answer_form_element)
+
+        # deploy container
+        self.parent.addChildElement(self.container)
+
 
 
 if __name__ == "__main__":
@@ -512,52 +464,17 @@ if __name__ == "__main__":
 
     heidesleutel = QGT.DecisionTree.from_csv("./sleutels/Heidesleutel_digitaal_werkversie.csv", sep = ",", header = 4)
 
-    # CreateQGISForm(project, heidesleutel)
-
-    AddRootButton(project, heidesleutel)
+    # AddRootButton(project, heidesleutel)
 
 
-    # form_structure = [
-    #     FormWidget("mycategory", dtype = QMetaType.Type.QString, \
-    #                 widget = QgsEditorWidgetSetup('ValueMap', {'map': {'Red': 'R', 'Green': 'G', 'Blue': 'B'}}) \
-    #                 ), \
-    #     \
-    #     FormContainer("Red habitat", condition = "\"mycategory\" = 'R'"), \
-    #     FormWidget("red subtype", dtype = QMetaType.Type.Bool, \
-    #                 widget = widget_library["checkbox"], \
-    #                 parent = "Red habitat"), \
-    #     FormContainer("Red A", condition = "\"red subtype\" = TRUE"), \
-    #     FormWidget("text A", dtype = QMetaType.Type.QString, \
-    #                 widget = widget_library["multiline"], \
-    #                 parent = "Red A"), \
-    #     FormContainer("Red B", condition = "\"red subtype\" = FALSE"), \
-    #     FormWidget("text B", dtype = QMetaType.Type.QString, \
-    #                 widget = widget_library["multiline"], \
-    #                 parent = "Red B"), \
-    #     \
-    #     FormContainer("Green habitat", condition = "\"mycategory\" = 'G'"), \
-    #     FormWidget("time", dtype = QMetaType.Type.Int, \
-    #                 widget = widget_library["date"], \
-    #                 parent = "Green habitat"), \
-    #     \
-    #     FormContainer("Blue habitat", condition = "\"mycategory\" = 'B'"), \
-    #     FormWidget("photo", dtype = QMetaType.Type.QString, \
-    #                 widget = widget_library["image"], \
-    #                 parent = "Blue habitat"), \
-    #     \
-    #     FormWidget("done", dtype = QMetaType.Type.Bool, \
-    #                 widget = widget_library["checkbox"], \
-    #                 ) \
-    # ]
+    heidesleutel_form = QgisFormDecisionTree( \
+        tree = heidesleutel,
+        project = project, \
+        name = "heidesleutel", \
+        verbose = True \
+        )
 
-    # test_form = QgisFormLayer( \
-    #     project, \
-    #     name = "heidesleutel", \
-    #     fields = form_structure, \
-    #     verbose = True \
-    #     )
-
-    check = project.Save()
-    project.app.exitQgis()
+    # heidesleutel_form.FinishFormCreation()
 
     # extent = (5.38128, 51.07422 , 5.40922, 51.08951) # EPSG:4326, WGS84?
+

@@ -63,6 +63,7 @@ def CutString(string, length):
 def ExtractClades(data):
     # data contains "chapters", clades, subgroups.
     # These should better be added as a category.
+    # Storing in a dict <- {"clade_idx": "label"}
 
     # assemble clades as a dictionary
     clades = {}
@@ -71,13 +72,12 @@ def ExtractClades(data):
 
     current = str(0)
     current_t1 = None
-    current_label = None
-    current_description = None
 
-    clades[current] = None
+    clades[current] = ""
 
 
     for idx, row in data.iterrows():
+        # print(idx, current, clades[current])
         if row["type"] == "T1":
             # add a new entry to clade
             current = current_t1 = str(row["step"])
@@ -87,7 +87,7 @@ def ExtractClades(data):
 
         if row["type"] == "T2":
             # add extra clade description
-            current = current_t1 + ">"+ str(row["step"])
+            current = current_t1 + ">>"+ str(row["step"])
 
             clades[current] = clades[current_t1] + " // " + CutString(row["name"], 60).strip()
             # print("    T2", current, current_t1, clades[current])
@@ -271,12 +271,18 @@ class DecisionTree(dict):
                 }
 
 
-    def GetClade(self, clade_idx):
+    def GetCladeMembers(self, clade_idx):
         # return all nodes by clade
         assert clade_idx in self.clades.keys()
         return {tnidx: node \
                 for tnidx, node in self.GetAllNodes().items() \
                 if node.clade == clade_idx \
+                }
+
+    def GetAllClades(self):
+        # return all nodes, organized in clades
+        return {self.GetCladeMembers(clade_idx) \
+                for clade_idx in self.clades.keys() \
                 }
 
 
@@ -342,6 +348,8 @@ class TreeNode(dict):
         ### [A]: Possible Answers
         self["A"] = {i: row.astype(str).to_dict() \
                      for i, row in RowsByType(rows, "A").iterrows()}
+        # ['name', 'next_step', 'classification', 'bwk_code', 'subkey', 'remark']
+
 
         for answer in self.GetAnswers():
             answer["node_link"] = self
@@ -351,17 +359,11 @@ class TreeNode(dict):
 
         ### [Q]: What is the question?
         if all(RowsByType(rows, "Q")["name"].isna()):
-            # print(self.types)
-            if self.GetClade() is not None:
-                self["Q"] = self.GetClade()
-
-            else:
-                self["Q"] = CommonString(self["A"])
-
+            self["Q"] = CommonString(self["A"])
         else:
             self["Q"] = "/".join(RowsByType(rows, "Q")["name"].values)
 
-    def GetClade(self):
+    def GetCladeLabel(self):
         # get the clade for this node
         clade = self.tree.clades.get(self.clade, None)
         return clade
@@ -531,4 +533,4 @@ if __name__ == "__main__":
     #     get_remark(answer)
 
     print("\n".join([f"{k}:\t{v}" for k, v in dt.clades.items()]))
-    dt.GetClade('50>60A')
+    dt.GetCladeMembers('50>60A')
