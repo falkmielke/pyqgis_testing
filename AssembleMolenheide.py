@@ -14,12 +14,14 @@ import atexit
 import QGISDecisionTrees as QGT
 
 
+# TODO visibility by Question ( i.e. hide Question container if different outcome within same tab )
+
 # TODO alternating checkboxes https://stackoverflow.com/questions/36281103/change-checkbox-state-to-not-checked-when-other-checkbox-is-checked-pyqt
 # TODO get satellite imagery
 # TODO extent Belgium?
 
 # TODO DecisionTree adjustment:
-#     There are more steps with no predecessor (76, 37, 24) -> now via clades
+#     There are more steps with no predecessor (76, 37, 24) -> now via clades/tabs
 
 
 
@@ -93,7 +95,8 @@ def AddInfoText(parent, text, label = ""):
     text_element.setText(text)
     parent.addChildElement(text_element)
 
-
+def GetTab(clidx):
+    return clidx.split(">>")[0]
 
 
 class QgisProject(object):
@@ -263,9 +266,6 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
         self.data_provider.addAttributes(
             [QgsField(f"classification", QMetaType.Type.QString)] \
-            # + [QgsField(f"hideClade_{clnr}", QMetaType.Type.QString) \
-            #    for clnr in self.clades.keys() \
-            #    if clnr not in ["root"]] \
             + [QgsField(f"Answer_{step}", QMetaType.Type.QString) \
                for step in self.steps] \
             )
@@ -297,16 +297,28 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
         AddInfoText(parent = self.containers["root"], text = self.meta["Titel"])
 
-        for clade_idx in self.clades.keys():
+        self.tabs = list(sorted(set([GetTab(k) for k in self.clades.keys()])))
+        for nr, tab in enumerate(self.tabs):
             parent = self.containers["root"]
-            if ">>" in clade_idx:
-                parent = self.containers[clade_idx.split(">>")[0]]
 
             if self.verbose:
-                print("\tcreating container for ", clade_idx, self.clades[clade_idx])
+                print("\tcreating container for ", tab, self.clades.get(tab, ""))
 
-            self.containers[clade_idx] = \
-                QgsAttributeEditorContainer(name = self.clades[clade_idx], parent = parent)
+            self.containers[tab] = \
+                QgsAttributeEditorContainer(name = f"Deel {nr+1}", parent = parent)
+
+            # use tabs
+            self.containers[tab].setType(Qgis.AttributeEditorContainerType(1))
+            # self.containers[tab].setHorizontalStretch(100)
+            # self.containers[tab].setVerticalStretch(100)
+
+        for extra_tab in ["besluit"]:
+            self.containers[extra_tab] = \
+                QgsAttributeEditorContainer(name = extra_tab, parent = self.containers["root"])
+
+            # use tabs
+            self.containers[extra_tab].setType(Qgis.AttributeEditorContainerType(1))
+
 
         if self.verbose:
             print("\t...done.")
@@ -339,7 +351,7 @@ class QgisFormDecisionTree(QGT.DecisionTree):
             field_idx = self.field_index_lookup(f"Answer_{idx}")
             question = QuestionBlock(
                 idx, node, field_idx = field_idx,
-                parent = self.containers[node.clade]
+                parent = self.containers[GetTab(node.clade)]
             )
 
             # widget style
@@ -361,21 +373,117 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
     def SetDynamicVisibilities(self):
         pass
-        # (1) add checkboxes to COLLAPSE COMPLETED clades
+        # (1) add checkboxes to COLLAPSE COMPLETED clades (/questions)
         # (2) hide CLADES/QUESTIONS if they were not reached yet
+
+        # OR-connected NOTNULLs?
+        tab_expressions = {tab: [] for tab in self.tabs}
+        question_expressions = {idx: [] for idx in self.GetAllNodes().keys()}
+
+        possible_solutions = {}
+
+        # easy: which node directs where
+        # which answers lead to which tab?
+        for idx, node in self.GetAllNodes().items():
+            this_tab = GetTab(node.clade)
+            for answer_idx, answer in node["A"].items():
+
+                next_key = answer["next_step"]
+                if next_key not in self.keys():
+                    solution_candidate = QGT.get_classification(answer)
+                    if possible_solutions.get(solution_candidate, None) is None:
+                        possible_solutions[solution_candidate] = []
+
+                    # store possible determination solutions
+                    possible_solutions[solution_candidate] \
+                        .append(f"(\"Answer_{idx}\" = {answer_idx})")
+                    continue
+
+                # found a link to next tab
+                target_tab = GetTab(self[next_key].clade)
+                if GetTab(node.clade) >= target_tab:
+                    # only influence across different tabs
+                    continue
+
+                tab_expressions[target_tab].append(f"(\"Answer_{idx}\" = {answer_idx})")
+
+                # prohibit a different question
+                # i.e. a different question in the same tab leads to another tub
+
+                for answer_cridx, answer2 in node["A"].items():
+                    if answer_cridx == answer_idx:
+                        continue
+                    cross_step = answer2["next_step"]
+                    if (cross_step not in self.keys()):
+                        continue
+                    if (GetTab(self[cross_step].clade) == this_tab):
+                        continue
+                    question_expressions[idx] \
+                        .append(f"(NOT (\"Answer_{answer_cridx}\" = {cross_step}))")
+
+
+        # set visibility to be dynamically controlled
+        for tab, express in tab_expressions.items():
+            if len(express) == 0:
+                continue
+
+            visexp = QgsExpression(" OR ".join(tab_expressions[tab]))
+            self.containers[tab].setVisibilityExpression(QgsOptionalExpression(visexp))
+
+
+        ## show classification if reached
+        print(possible_solutions)
+        for nr, (solution_key, express) in enumerate(possible_solutions.items()):
+            solution_container = QgsAttributeEditorContainer( \
+                name = f"Classification {nr}",
+                parent = self.containers["besluit"]
+                )
+
+            AddInfoText(solution_container, solution_key, "classification: ")
+
+            # visible
+            visexp = QgsExpression(" OR ".join(express))
+            solution_container.setVisibilityExpression(QgsOptionalExpression(visexp))
+
+            # deploy container
+            self.containers["besluit"].addChildElement(solution_container)
+
+
+        visexp = QgsExpression(" OR ".join([" OR ".join(express) \
+                              for express in possible_solutions.values()]) \
+                              )
+        self.containers["besluit"].setVisibilityExpression(QgsOptionalExpression(visexp))
+
+
+        ## hide excluded questions
+        for idx in self.GetAllNodes().keys():
+            continue # TODO not working correctly
+
+            visexp = QgsExpression(" AND ".join(question_expressions[idx]) \
+                                  )
+            self.question_blocks[idx].container.setVisibilityExpression(QgsOptionalExpression(visexp))
+            # YOLO.
+
+        # TODO dynamically set field `classification`
+        # e = QgsExpression( 'Column * 3' )
+        # e.prepare( vl.pendingFields() )
+        #
+        # for f in vl.getFeatures():
+        #     f[idx] = e.evaluate( f )
+        #     vl.updateFeature( f )
+        #
+        # vl.commitChanges()
+
 
 
     def FinishFormCreation(self):
         # update and save
 
-        # add all containers
-        for clade_idx in self.clades.keys():
-            parent = self.containers["root"]
-            if ">>" in clade_idx:
-                parent = self.containers[clade_idx.split(">>")[0]]
+        # add all tabs
+        for tab in self.tabs:
+            self.containers["root"].addChildElement(self.containers[tab])
 
-            parent.addChildElement(self.containers[clade_idx])
-
+        self.containers["root"].addChildElement(self.containers["besluit"])
 
         # connect the form configuration
         self.layer.updateFields()
@@ -390,6 +498,7 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
 # provider and layer registries from memory
 # TODO atexit?
+
 
 class QuestionBlock(object):
     # a single block for a question
@@ -411,8 +520,8 @@ class QuestionBlock(object):
         # create a value map widget from the possible answers
 
         value_map = {"map": \
-            {answer["name"]: answer["next_step"] \
-             for answer in self.node.GetAnswers()} \
+            {f"[{int(answer_idx): 3.0f}] " + answer["name"][:100]: answer_idx \
+             for answer_idx, answer in self.node["A"].items()} \
         }
 
         return QgsEditorWidgetSetup('ValueMap', value_map)
@@ -428,11 +537,7 @@ class QuestionBlock(object):
         # question text
         print(self.node["Q"])
 
-        AddInfoText(self.container, self.node["Q"])
-
-        # add info text
-        for info in self.node.get("I", []):
-            AddInfoText(self.container, info, "Q:   ")
+        AddInfoText(self.container, self.node["Q"], "Q:   ")
 
 
         # print(f"\n___ +{self.idx}+ ________________")
@@ -441,8 +546,14 @@ class QuestionBlock(object):
         # ['name', 'next_step', 'classification', 'bwk_code', 'subkey', 'remark']
 
         # answer text previews
-        for answer_id, answer in enumerate(self.node.GetAnswers()):
-            AddInfoText(self.container, answer["name"], f" - A:")
+        for answer_idx, answer in self.node["A"].items():
+            ans = answer["name"]
+            rows = len(ans)//100+1
+            for row in range(rows):
+                AddInfoText(self.container, \
+                            ans[row*100:(row+1)*100], \
+                            f"[{int(answer_idx): 3.0f}] " if row == 0 else f"    " \
+                            )
 
         # answer dropdown
         answer_form_element = QgsAttributeEditorField( \
@@ -451,6 +562,17 @@ class QuestionBlock(object):
             parent = self.container \
            )
         self.container.addChildElement(answer_form_element)
+
+
+        # add info text
+        for info in self.node.get("I", []):
+            AddInfoText(self.container, info)
+
+
+        # collapse container
+        # visexp = QgsExpression(f"\"Answer_{self.node.idx}\" IS NOT NULL")
+        # print(dir(self.container)) # TODO NOT FOUND
+        # self.container.setCollapsedExpression(QgsOptionalExpression(visexp))
 
         # deploy container
         self.parent.addChildElement(self.container)

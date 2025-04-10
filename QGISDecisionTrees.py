@@ -470,7 +470,7 @@ def get_classification(answer):
         answer["subkey"],
         answer["classification"],
         answer["bwk_code"]
-    ] if label != 'nan']))
+    ] if label.lower() != 'nan']))
 
 def CommonString(answers):
     # get the common part of a set of answer descriptions ("name")
