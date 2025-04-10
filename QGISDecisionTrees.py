@@ -29,6 +29,7 @@ Thank you for the programming task.
 # We build on the concepts of others.
 
 from collections.abc import Callable # for typestrings
+import re as RE # regular expressions
 import numpy as NP
 import pandas as PD
 from difflib import SequenceMatcher # substring matching
@@ -53,6 +54,51 @@ from difflib import SequenceMatcher # substring matching
 # get a subset of rows by type
 RowsByType = lambda df, typ, typcol = "type": df.loc[df[typcol].values == typ, :]
 
+def CutString(string, length):
+    if len(string) <= length-5:
+        return string
+    else:
+        return(string[:length-5] + "[...]")
+
+def ExtractClades(data):
+    # data contains "chapters", clades, subgroups.
+    # These should better be added as a category.
+
+    # assemble clades as a dictionary
+    clades = {}
+    data["clade"] = NP.nan
+    data["clade"] = data["clade"].astype(str)
+
+    current = str(0)
+    current_t1 = None
+    current_label = None
+    current_description = None
+
+    clades[current] = None
+
+
+    for idx, row in data.iterrows():
+        if row["type"] == "T1":
+            # add a new entry to clade
+            current = current_t1 = str(row["step"])
+            clades[current] = row["name"].strip()
+            # print("T1", current, clades[current])
+            continue
+
+        if row["type"] == "T2":
+            # add extra clade description
+            current = current_t1 + ">"+ str(row["step"])
+
+            clades[current] = clades[current_t1] + " // " + CutString(row["name"], 60).strip()
+            # print("    T2", current, current_t1, clades[current])
+            continue
+
+        # link the row to a clade
+        data.loc[idx, "clade"] = current
+
+    return data, clades
+
+
 
 #_______________________________________________________________________________
 #                 The Tree
@@ -60,13 +106,43 @@ RowsByType = lambda df, typ, typcol = "type": df.loc[df[typcol].values == typ, :
 # This dict-derived object will carry the structure of all the decision nodes.
 
 class DecisionTree(dict):
-    def __init__(self, data: PD.DataFrame, meta: dict = None):
+
+    @classmethod
+    def from_csv(cls, csv_path: str, *args, **kwargs):
+        # load a decision tree from a csv
+        # passes arguments through to pandas.read_csv
+
+        # read meta info
+        meta = None
+        header = kwargs.get("header", 0)
+        if header > 0:
+            meta = PD.read_csv(csv_path, index_col = 0, nrows = header, header = None)
+            meta = meta.iloc[:, :1].reset_index(drop = False, inplace = False)
+            meta = {r[0]: r[1] for _, r in meta.iterrows()}
+
+        # read data
+        data = PD.read_csv(csv_path, *args, **kwargs)
+
+        # lower all column names
+        data.rename(columns = {col: col.lower() for col in data.columns}, inplace = True)
+
+        # group into clades
+        data, clades = ExtractClades(data)
+
+        # instantiate a DecisionTree and return it.
+        return cls(data, meta = meta, clades = clades)
+
+
+    def __init__(self, data: PD.DataFrame, meta: dict = None, clades: dict = None):
         # builds a tree from a data frame
         # which should have columns:
         #     step, type, name, next_step, classification, bwk_code, subkey, remark
 
         # store meta info
         self.meta = meta
+
+        # store clades
+        self.clades = clades
 
         # lower all column names
         data.rename(columns = {col: col.lower() for col in data.columns}, inplace = True)
@@ -77,12 +153,35 @@ class DecisionTree(dict):
         # data["step"] = data["step"].astype(int) # does not work: things like "12A"
         for col in ["step", "next_step"]:
             # ensure that these are the same data type
-            data[col] = [str(val) for val in data[col].values]
+            data[col] = [str(val).strip().upper() for val in data[col].values]
         # print(data.sample(3).T)
+
+        # check if all steps have a predecessor
+        next_steps = set(data["next_step"].values)
+        no_predecessor = set([step for step in data["step"].values \
+                          if step not in next_steps \
+                          ])
+        no_predecessor.remove(data["step"].values[0])
+
+        # adjust some, print warning
+        if len(no_predecessor) > 0:
+            # remove extra letter
+            adjusted_predecessor = []
+            for npred in no_predecessor:
+                letterless_index = RE.sub(r"\D", "", npred)
+                if npred == letterless_index: continue
+                missing_links = data["next_step"].values == letterless_index
+                data.loc[missing_links, "next_step"] = npred
+                adjusted_predecessor.append(f"{letterless_index} -> {npred}")
+
+            print("Found the following loose branches: ", no_predecessor, \
+                  ", but adjusted ", adjusted_predecessor)
+            # raise IOError("Found the following loose branches: ", no_predecessor)
 
         # list steps for later reference
         self.steps = list(map(str, NP.unique(sorted(data["step"].values))))
 
+        # create TreeNode's
         for step in self.steps:
             self[step] = TreeNode(self, data.loc[data["step"].values == step])
 
@@ -99,11 +198,11 @@ class DecisionTree(dict):
 
     def ApplyToNodes(self, apply_function: Callable[[object], None]):
         # recursively apply a function to all nodes
-        result = {}
+        results = {}
 
         def RecursiveApply(tree_node):
 
-            result[tree_node.idx] = apply_function(tree_node)
+            results[tree_node.idx] = apply_function(tree_node)
 
             for term, child in tree_node.Traverse():
                 if not term:
@@ -111,7 +210,8 @@ class DecisionTree(dict):
                     RecursiveApply(child)
 
         RecursiveApply(self.root)
-        return(result)
+
+        return(results)
 
 
     def PrintGraph(self, filename):
@@ -164,6 +264,21 @@ class DecisionTree(dict):
         graph.write_svg(filename)
 
 
+    def GetAllNodes(self):
+        # return all nodes
+        return {tnidx: self[tnidx] \
+                for tnidx in self.steps \
+                }
+
+
+    def GetClade(self, clade_idx):
+        # return all nodes by clade
+        assert clade_idx in self.clades.keys()
+        return {tnidx: node \
+                for tnidx, node in self.GetAllNodes().items() \
+                if node.clade == clade_idx \
+                }
+
 
     def __get__(self, key):
 
@@ -173,25 +288,6 @@ class DecisionTree(dict):
 
         return super(DecisionTree, self).__get__(key)
 
-
-    @classmethod
-    def from_csv(cls, csv_path: str, *args, **kwargs):
-        # load a decision tree from a csv
-        # passes arguments through to pandas.read_csv
-
-        # read meta info
-        meta = None
-        header = kwargs.get("header", 0)
-        if header > 0:
-            meta = PD.read_csv(csv_path, index_col = 0, nrows = header, header = None)
-            meta = meta.iloc[:, :1].reset_index(drop = False, inplace = False)
-            meta = {r[0]: r[1] for _, r in meta.iterrows()}
-
-        # read data
-        data = PD.read_csv(csv_path, *args, **kwargs)
-
-        # instantiate a DecisionTree and return it.
-        return cls(data, meta = meta)
 
 
 #_______________________________________________________________________________
@@ -203,20 +299,30 @@ class TreeNode(dict):
 
     def __init__(self, tree, rows):
         # print(rows)
+        # rows contain the following types:
+        #     "T1", "T2": new clade/subgroup/category; to be removed
+        #     "Q": that is the question
+        #     "A": answers (usually more than one)
+        #     "I": extra info
 
         # reference to the tree
         self.tree = tree
 
+        # skip clade-defining category rows
+        non_T = lambda tp: tp[0] != "T"
+        rows = rows.loc[list(map(non_T, rows["type"].values)), :]
+
         # the index ("step")
         self.idx = rows.iloc[0, :]["step"]
         self.types = NP.unique(rows["type"].values).astype(str)
+        self.clade = rows.iloc[0, :]["clade"]
 
         ### [T]: type/topic/theme (can be T1, T2, ...)
         ### and [I]: extra information
         for typ in self.types:
             if typ in ["A", "Q"]:
                 # answers and questions are special
-                next
+                continue
 
             # this is about "T"/headers and "I"/info
             self[str(typ)] = \
@@ -246,8 +352,8 @@ class TreeNode(dict):
         ### [Q]: What is the question?
         if all(RowsByType(rows, "Q")["name"].isna()):
             # print(self.types)
-            if self.get("T", None) is not None:
-                self["Q"] = "/".join(self["T"])
+            if self.GetClade() is not None:
+                self["Q"] = self.GetClade()
 
             else:
                 self["Q"] = CommonString(self["A"])
@@ -255,6 +361,10 @@ class TreeNode(dict):
         else:
             self["Q"] = "/".join(RowsByType(rows, "Q")["name"].values)
 
+    def GetClade(self):
+        # get the clade for this node
+        clade = self.tree.clades.get(self.clade, None)
+        return clade
 
     def GetAnswers(self):
         # get all the answers... at least for this node.
@@ -419,3 +529,6 @@ if __name__ == "__main__":
 
     # for answer in dt.root.GetAnswers():
     #     get_remark(answer)
+
+    print("\n".join([f"{k}:\t{v}" for k, v in dt.clades.items()]))
+    dt.GetClade('50>60A')
