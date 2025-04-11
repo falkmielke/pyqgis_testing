@@ -261,11 +261,16 @@ class QgisFormDecisionTree(QGT.DecisionTree):
         # AssembleField = lambda node: (f"Answer_{node.idx}", QMetaType.Type.QString)
         # all_fields = self.ApplyToNodes(AssembleField)
 
+        # find all the tabs
+        self.tabs = list(sorted(set([GetTab(k) for k in self.clades.keys()])))
+
         if self.verbose:
             print("### Assembling fields for all questions and containers.")
 
         self.data_provider.addAttributes(
             [QgsField(f"classification", QMetaType.Type.QString)] \
+            + [QgsField(f"showall_tab{tab}", QMetaType.Type.Bool) \
+               for tab in self.tabs] \
             + [QgsField(f"Answer_{step}", QMetaType.Type.QString) \
                for step in self.steps] \
             )
@@ -297,7 +302,6 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
         AddInfoText(parent = self.containers["root"], text = self.meta["Titel"])
 
-        self.tabs = list(sorted(set([GetTab(k) for k in self.clades.keys()])))
         for nr, tab in enumerate(self.tabs):
             parent = self.containers["root"]
 
@@ -312,6 +316,24 @@ class QgisFormDecisionTree(QGT.DecisionTree):
             # self.containers[tab].setHorizontalStretch(100)
             # self.containers[tab].setVerticalStretch(100)
 
+            ## add a "show all" checkbox
+            showall_label = f"showall_tab{tab}"
+            showall_field_idx = self.field_index_lookup(showall_label)
+            parent = self.containers[tab]
+            self.layer.setEditorWidgetSetup( \
+                showall_field_idx, \
+                QgsEditorWidgetSetup( \
+                    'CheckBox', \
+                    {'AllowNullState': False, 'TextDisplayMethod': 0} \
+                ))
+            parent.addChildElement(QgsAttributeEditorField( \
+                name = showall_label, \
+                idx = showall_field_idx, \
+                parent = parent \
+            ))
+            self.form_config.setLabelOnTop(showall_field_idx, False)
+
+
         for extra_tab in ["besluit"]:
             self.containers[extra_tab] = \
                 QgsAttributeEditorContainer(name = extra_tab, parent = self.containers["root"])
@@ -323,16 +345,6 @@ class QgisFormDecisionTree(QGT.DecisionTree):
         if self.verbose:
             print("\t...done.")
 
-
-    def FormConfigPreparation(self):
-        # prepare form configuration
-
-        if self.verbose:
-            print("### Adjusting form configurator...")
-
-
-        if self.verbose:
-            print("\t...done.")
 
 
     def FormNodeForms(self):
@@ -372,10 +384,10 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
 
     def SetDynamicVisibilities(self):
-        pass
         # (1) hide CLADES/QUESTIONS if they were not reached yet
-        # (2) hide if question in the same tab led to an answer
-        # (3) add checkboxes to SHOW COMPLETED clades
+        # (2) hide if question in the same tab led to a different path
+        # (3) add checkboxes to SHOW ALL clades in tab
+        # (4) show decision if one was made
 
         # store the expressions we gather on the way
         tab_expressions = {tab: [] for tab in self.tabs}
@@ -460,10 +472,12 @@ class QgisFormDecisionTree(QGT.DecisionTree):
                                           for idx2, successor in successor_indices]))
 
         ## hide excluded questions
-        for idx in self.GetAllNodes().keys():
-            # continue # TODO not working correctly
-            visexp = QgsExpression(" AND ".join(question_expressions[idx]) \
-                                  )
+        for idx, node in self.GetAllNodes().items():
+            tab = GetTab(node.clade)
+
+            expression_string = " AND ".join(question_expressions[idx])
+            expression_string = f"(showall_tab{tab} = TRUE) OR ({expression_string})"
+            visexp = QgsExpression( expression_string )
             self.question_blocks[idx].container.setVisibilityExpression(QgsOptionalExpression(visexp))
             # YOLO.
 
