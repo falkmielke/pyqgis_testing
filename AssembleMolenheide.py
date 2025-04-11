@@ -373,19 +373,21 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
     def SetDynamicVisibilities(self):
         pass
-        # (1) add checkboxes to COLLAPSE COMPLETED clades (/questions)
-        # (2) hide CLADES/QUESTIONS if they were not reached yet
+        # (1) hide CLADES/QUESTIONS if they were not reached yet
+        # (2) hide if question in the same tab led to an answer
+        # (3) add checkboxes to SHOW COMPLETED clades
 
-        # OR-connected NOTNULLs?
+        # store the expressions we gather on the way
         tab_expressions = {tab: [] for tab in self.tabs}
         question_expressions = {idx: [] for idx in self.GetAllNodes().keys()}
 
         possible_solutions = {}
 
-        # easy: which node directs where
+        ## (1) hide CLADES/QUESTIONS if they were not reached yet
+        # which node directs where
         # which answers lead to which tab?
         for idx, node in self.GetAllNodes().items():
-            this_tab = GetTab(node.clade)
+            # this_tab = GetTab(node.clade)
             for answer_idx, answer in node["A"].items():
 
                 next_key = answer["next_step"]
@@ -407,20 +409,6 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
                 tab_expressions[target_tab].append(f"(\"Answer_{idx}\" = {answer_idx})")
 
-                # prohibit a different question
-                # i.e. a different question in the same tab leads to another tub
-
-                for answer_cridx, answer2 in node["A"].items():
-                    if answer_cridx == answer_idx:
-                        continue
-                    cross_step = answer2["next_step"]
-                    if (cross_step not in self.keys()):
-                        continue
-                    if (GetTab(self[cross_step].clade) == this_tab):
-                        continue
-                    question_expressions[idx] \
-                        .append(f"(NOT (\"Answer_{answer_cridx}\" = {cross_step}))")
-
 
         # set visibility to be dynamically controlled
         for tab, express in tab_expressions.items():
@@ -429,6 +417,55 @@ class QgisFormDecisionTree(QGT.DecisionTree):
 
             visexp = QgsExpression(" OR ".join(tab_expressions[tab]))
             self.containers[tab].setVisibilityExpression(QgsOptionalExpression(visexp))
+
+
+        ## (2) hide if question in the same tab led to an answer
+        # prohibit a different question
+        # i.e. a different question in the same tab leads to another tub
+
+        # print([k for k in self.keys()])
+        for idx, node in self.GetAllNodes().items():
+            this_tab = GetTab(node.clade)
+            successor_indices = [] # qn in same tab which list idx as a successor
+            null_indices = [] # independent questions leading to different path
+            for idx2, node2 in self.GetCladeMembers(this_tab).items():
+                if idx2 == idx:
+                    continue # skip self
+
+
+                # hide question if it is the successor of ANY other one
+                new_successor = None
+                for answer_idx2, answer2 in node2["A"].items():
+                    next_key = answer2["next_step"]
+
+                    if (next_key == idx):
+                        new_successor = answer_idx2
+
+                # per default, other questions must be null
+                if new_successor is not None:
+                    successor_indices.append((idx2, new_successor))
+                else:
+                    null_indices.append(idx2)
+
+            # after all others in the tab were checked
+            # (A) no successors? -> display only if other qns are NULL
+            if len(successor_indices) == 0:
+                question_expressions[idx] \
+                    .append(" AND ".join([f"(\"Answer_{idx2}\" IS NULL)" \
+                                          for idx2 in null_indices]))
+            else:
+            # (B) yes this is a successor? -> display only when selected
+                question_expressions[idx] \
+                    .append(" OR ".join([f"(\"Answer_{idx2}\" = {successor})" \
+                                          for idx2, successor in successor_indices]))
+
+        ## hide excluded questions
+        for idx in self.GetAllNodes().keys():
+            # continue # TODO not working correctly
+            visexp = QgsExpression(" AND ".join(question_expressions[idx]) \
+                                  )
+            self.question_blocks[idx].container.setVisibilityExpression(QgsOptionalExpression(visexp))
+            # YOLO.
 
 
         ## show classification if reached
@@ -453,16 +490,6 @@ class QgisFormDecisionTree(QGT.DecisionTree):
                               for express in possible_solutions.values()]) \
                               )
         self.containers["besluit"].setVisibilityExpression(QgsOptionalExpression(visexp))
-
-
-        ## hide excluded questions
-        for idx in self.GetAllNodes().keys():
-            continue # TODO not working correctly
-
-            visexp = QgsExpression(" AND ".join(question_expressions[idx]) \
-                                  )
-            self.question_blocks[idx].container.setVisibilityExpression(QgsOptionalExpression(visexp))
-            # YOLO.
 
         # TODO dynamically set field `classification`
         # e = QgsExpression( 'Column * 3' )
@@ -519,6 +546,8 @@ class QuestionBlock(object):
     def ConstructValueMapWidget(self):
         # create a value map widget from the possible answers
 
+        # the value map links the display text in the attribute editor
+        # to the index of the answer which was chosen (internal data)
         value_map = {"map": \
             {f"[{int(answer_idx): 3.0f}] " + answer["name"][:100]: answer_idx \
              for answer_idx, answer in self.node["A"].items()} \
