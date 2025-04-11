@@ -567,6 +567,9 @@ class QuestionBlock(object):
              for answer_idx, answer in self.node["A"].items()} \
         }
 
+        # add NULL option for QField
+        value_map["map"]["(NULL)"] = None
+
         return QgsEditorWidgetSetup('ValueMap', value_map)
 
 
